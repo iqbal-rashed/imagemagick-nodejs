@@ -589,12 +589,7 @@ jobs:
     name: Publish Release
     runs-on: ubuntu-24.04
     if: github.event_name != 'pull_request'
-    needs:
-      - version
-      - windows
-      - linux-glibc
-      - linux-musl
-      - macos
+    needs: version
 
     permissions:
       contents: write
@@ -623,15 +618,77 @@ jobs:
           VERSION: ${{ needs.version.outputs.version }}
           IM_COMMIT: ${{ needs.version.outputs.commit }}
           WRAPPER_COMMIT: ${{ github.sha }}
+          PLATFORM_WINDOWS: ${{ github.event.inputs.platform_windows != 'false' && 'true' || 'false' }}
+          PLATFORM_LINUX_GLIBC: ${{ github.event.inputs.platform_linux_glibc != 'false' && 'true' || 'false' }}
+          PLATFORM_LINUX_MUSL: ${{ github.event.inputs.platform_linux_musl != 'false' && 'true' || 'false' }}
+          PLATFORM_MACOS: ${{ github.event.inputs.platform_macos != 'false' && 'true' || 'false' }}
         run: |
-          # Delete existing release if it exists
-          gh release delete bin-main --yes 2>/dev/null || true
+          # Determine which platform files to replace
+          PLATFORMS_TO_UPDATE=""
+          [ "$PLATFORM_WINDOWS" = "true" ] && PLATFORMS_TO_UPDATE="$PLATFORMS_TO_UPDATE windows"
+          [ "$PLATFORM_LINUX_GLIBC" = "true" ] && PLATFORMS_TO_UPDATE="$PLATFORMS_TO_UPDATE linux-glibc"
+          [ "$PLATFORM_LINUX_MUSL" = "true" ] && PLATFORMS_TO_UPDATE="$PLATFORMS_TO_UPDATE linux-musl"
+          [ "$PLATFORM_MACOS" = "true" ] && PLATFORMS_TO_UPDATE="$PLATFORMS_TO_UPDATE macos"
 
-          # Delete existing tag if it exists
-          git push origin :refs/tags/bin-main 2>/dev/null || true
+          echo "Platforms to update: $PLATFORMS_TO_UPDATE"
 
-          # Create release notes
-          cat > release_notes.md << EOF
+          # Check if release exists
+          if gh release view bin-main &>/dev/null; then
+            echo "Release exists. Updating platform-specific assets..."
+
+            # Download existing assets to preserve them
+            mkdir -p existing_assets
+            gh release download bin-main --dir existing_assets --pattern "*.tar.gz" --pattern "*.sha256" 2>/dev/null || true
+
+            # Delete only the assets for platforms being rebuilt
+            for platform in $PLATFORMS_TO_UPDATE; do
+              echo "Removing old $platform assets..."
+              gh release delete-asset bin-main --pattern "*-${platform}-*" --yes 2>/dev/null || true
+            done
+
+            # Upload new artifacts
+            echo "Uploading new artifacts..."
+            gh release upload bin-main artifacts/*.tar.gz artifacts/*.sha256 --clobber
+
+            # Update release notes
+            cat > release_notes.md << EOF
+          # ImageMagick Portable Binaries
+
+          **ImageMagick Version:** ${VERSION}
+          **ImageMagick Commit:** [${IM_COMMIT}](https://github.com/ImageMagick/ImageMagick/commit/${IM_COMMIT})
+          **Wrapper Repo Commit:** [${WRAPPER_COMMIT:0:7}](https://github.com/${{ github.repository }}/commit/${WRAPPER_COMMIT})
+          **Last Updated:** $(date -u +"%Y-%m-%d %H:%M:%S UTC")
+
+          ## Included Platforms
+
+          | Platform | Architecture | File |
+          |----------|--------------|------|
+          | Windows | x64 | \`imagemagick-${VERSION}-windows-x64.tar.gz\` |
+          | Windows | x86 | \`imagemagick-${VERSION}-windows-x86.tar.gz\` |
+          | Linux (glibc) | amd64 | \`imagemagick-${VERSION}-linux-glibc-amd64.tar.gz\` |
+          | Linux (glibc) | arm64 | \`imagemagick-${VERSION}-linux-glibc-arm64.tar.gz\` |
+          | Linux (musl) | amd64 | \`imagemagick-${VERSION}-linux-musl-amd64.tar.gz\` |
+          | Linux (musl) | arm64 | \`imagemagick-${VERSION}-linux-musl-arm64.tar.gz\` |
+          | macOS | arm64 | \`imagemagick-${VERSION}-macos-arm64.tar.gz\` |
+          | macOS | x64 | \`imagemagick-${VERSION}-macos-x64.tar.gz\` |
+
+          ## Supported Formats
+          PNG, JPEG, WEBP, HEIF/HEIC, PDF, TIFF, OpenJPEG (JP2)
+
+          ## Notes
+          - Built with Q16-HDRI quantum depth
+          - Static builds for maximum portability
+          - Minimal bundle size optimized for Node.js binary wrapper use
+          - Updated platforms: $PLATFORMS_TO_UPDATE
+          EOF
+
+            gh release edit bin-main --notes-file release_notes.md
+
+          else
+            echo "Release does not exist. Creating new release..."
+
+            # Create release notes
+            cat > release_notes.md << EOF
           # ImageMagick Portable Binaries
 
           **ImageMagick Version:** ${VERSION}
@@ -661,12 +718,13 @@ jobs:
           - Minimal bundle size optimized for Node.js binary wrapper use
           EOF
 
-          # Create new prerelease
-          gh release create bin-main \
-            --title "ImageMagick ${VERSION} Portable Binaries" \
-            --notes-file release_notes.md \
-            artifacts/*.tar.gz \
-            artifacts/*.sha256
+            # Create new prerelease
+            gh release create bin-main \
+              --title "ImageMagick ${VERSION} Portable Binaries" \
+              --notes-file release_notes.md \
+              artifacts/*.tar.gz \
+              artifacts/*.sha256
+          fi
 
   # ============================================================================
   # FAILURE HANDLER
