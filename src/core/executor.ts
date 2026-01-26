@@ -6,7 +6,7 @@
 
 import { spawn, ChildProcess } from 'child_process';
 import { Readable, Writable } from 'stream';
-import { findBinary } from './binary';
+import { findBinary, isVersion7 } from './binary';
 import { ExecuteOptions, ExecuteResult } from './types';
 import { ExecutionError, TimeoutError, BinaryNotFoundError } from '../utils/errors';
 import { sanitizeArguments } from '../utils/validation';
@@ -56,9 +56,15 @@ export async function execute(args: string[], options?: ExecuteOptions): Promise
   const opts = { ...DEFAULT_OPTIONS, ...options };
 
   // Sanitize arguments to prevent command injection
-  const sanitizedArgs = sanitizeArguments(args);
+  let sanitizedArgs = sanitizeArguments(args);
 
   const binaryPath = await findBinary();
+
+  // ImageMagick v7 compatibility: 'magick convert' is often not supported
+  // or behaves differently. In v7, 'magick' itself is the replacement for 'convert'.
+  if (sanitizedArgs[0] === 'convert' && (await isVersion7())) {
+    sanitizedArgs = sanitizedArgs.slice(1);
+  }
 
   if (opts.verbose) {
     console.log(`[ImageMagick] Executing: ${binaryPath} ${sanitizedArgs.join(' ')}`);
@@ -155,9 +161,15 @@ export async function executeStream(
   const opts = { ...DEFAULT_OPTIONS, ...options };
 
   // Sanitize arguments to prevent command injection
-  const sanitizedArgs = sanitizeArguments(args);
+  let sanitizedArgs = sanitizeArguments(args);
 
   const binaryPath = await findBinary();
+
+  // ImageMagick v7 compatibility: 'magick convert' is often not supported
+  // or behaves differently. In v7, 'magick' itself is the replacement for 'convert'.
+  if (sanitizedArgs[0] === 'convert' && (await isVersion7())) {
+    sanitizedArgs = sanitizedArgs.slice(1);
+  }
 
   if (opts.verbose) {
     console.log(`[ImageMagick] Streaming: ${binaryPath} ${sanitizedArgs.join(' ')}`);

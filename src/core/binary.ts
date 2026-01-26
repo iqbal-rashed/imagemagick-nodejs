@@ -18,6 +18,9 @@ let cachedBinaryPath: string | null = null;
 /** Custom binary path set by user */
 let customBinaryPath: string | null = null;
 
+/** Cached major version */
+let cachedMajorVersion: number | null = null;
+
 /**
  * Get the path to the vendor-bundled binary (downloaded during npm install)
  */
@@ -310,6 +313,7 @@ export async function getVersion(): Promise<VersionInfo> {
 
       try {
         const versionInfo = parseVersionOutput(stdout);
+        cachedMajorVersion = versionInfo.major;
         resolve(versionInfo);
       } catch (error) {
         reject(error);
@@ -455,4 +459,20 @@ export async function getSupportedFormats(): Promise<string[]> {
       reject(new BinaryNotFoundError(binaryPath));
     });
   });
+}
+
+/**
+ * Check if the current ImageMagick version is 7 or newer
+ */
+export async function isVersion7(): Promise<boolean> {
+  if (cachedMajorVersion !== null) {
+    return cachedMajorVersion >= 7;
+  }
+
+  try {
+    const version = await getVersion();
+    return version.major >= 7;
+  } catch {
+    return false;
+  }
 }

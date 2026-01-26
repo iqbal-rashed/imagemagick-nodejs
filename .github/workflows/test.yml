@@ -1,0 +1,69 @@
+name: Test Examples
+
+on:
+  push:
+    branches: [main]
+    paths:
+      - "src/**"
+      - "examples/**"
+      - "tests/**"
+      - "package.json"
+      - ".github/workflows/test.yml"
+  pull_request:
+    branches: [main]
+    paths:
+      - "src/**"
+      - "examples/**"
+      - "tests/**"
+      - "package.json"
+      - ".github/workflows/test.yml"
+  workflow_dispatch:
+
+jobs:
+  test-examples:
+    name: Test Examples on ${{ matrix.os }}
+    runs-on: ${{ matrix.os }}
+    strategy:
+      fail-fast: false
+      matrix:
+        os: [ubuntu-24.04, windows-2025, macos-14, macos-15]
+
+    steps:
+      - name: Checkout code
+        uses: actions/checkout@v4
+
+      - name: Setup Node.js
+        uses: actions/setup-node@v4
+        with:
+          node-version: "20"
+          cache: "yarn"
+
+      - name: Install dependencies
+        run: yarn install --frozen-lockfile
+
+      - name: Download Binaries
+        run: npm run download
+
+      - name: Run Unit Tests
+        run: npm run test:run
+
+      - name: Run Security Tests
+        run: npm run test:run -- tests/security.test.ts
+
+      - name: Run Integration Tests
+        run: npm run test:run -- tests/integration.test.ts
+
+      - name: Run Basic Example
+        run: npx tsx examples/basic.ts
+
+      - name: Run Batch Example
+        run: npx tsx examples/batch.ts
+
+      - name: Run Security Example
+        run: npx tsx examples/security.ts
+
+      - name: Run Composite Example
+        run: npx tsx examples/composite.ts
+
+      - name: Run Advanced Example
+        run: npx tsx examples/advanced.ts

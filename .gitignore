@@ -27,3 +27,4 @@ coverage/
 .claude
 bin
 outputs
+test-output

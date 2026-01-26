@@ -2,25 +2,16 @@
  * Unit tests for ImageMagick Node.js Wrapper
  */
 
-import { describe, it, expect, vi, beforeEach } from 'vitest';
+import { describe, it, expect } from 'vitest';
 import {
-  ConvertArgs,
   convert,
-  MogrifyArgs,
   mogrify,
-  CompositeArgs,
   composite,
-  MontageArgs,
   montage,
-  CompareArgs,
   compare,
-  AnimateArgs,
   animate,
-  ImportArgs,
   importScreen,
-  DisplayArgs,
   display,
-  StreamArgs,
   stream,
 } from '../src/index';
 
@@ -146,11 +137,10 @@ describe('MontageArgs', () => {
   });
 
   it('should add tile configuration', () => {
-    const builder = montage(['img1.jpg', 'img2.jpg']).tile(3, 2).output('montage.jpg');
+    const builder = montage(['img1.jpg', 'img2.jpg']).tile('3x2').output('montage.jpg');
     const args = builder.build();
     expect(args).toContain('-tile');
-    // Tile value is passed as separate number or combined - check that both values present
-    expect(args.join(' ')).toContain('-tile');
+    expect(args).toContain('3x2');
   });
 });
 

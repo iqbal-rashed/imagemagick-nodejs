@@ -4,7 +4,14 @@
  * Demonstrates batch processing multiple images with progress tracking.
  */
 
-import { findImages, processBatch, batchOptimizeFiles, BatchProgress } from '../src/index';
+import {
+  findImages,
+  processBatch,
+  batchResizeFiles,
+  batchOptimizeFiles,
+  batchConvertFiles,
+  type BatchProgress,
+} from '../src/index';
 import * as path from 'path';
 import * as fs from 'fs';
 
@@ -13,7 +20,7 @@ async function main(): Promise<void> {
 
   // Use samples folder for input, outputs folder for output
   const inputDir = process.argv[2] ?? path.join(__dirname, '../samples');
-  const outputDir = process.argv[3] ?? path.join(__dirname, '../outputs');
+  const outputDir = process.argv[3] ?? path.join(__dirname, '../outputs/batch');
 
   console.log(`Input directory: ${path.relative(process.cwd(), inputDir)}`);
   console.log(`Output directory: ${path.relative(process.cwd(), outputDir)}\n`);
@@ -25,61 +32,135 @@ async function main(): Promise<void> {
   console.log(`Scanning ${inputDir} for images...`);
   const images = await findImages(inputDir, {
     extensions: ['.jpg', '.jpeg', '.png', '.webp'],
-    recursive: true,
+    recursive: false,
   });
 
   console.log(`Found ${images.length} images\n`);
 
   if (images.length === 0) {
-    console.log('No images found.');
+    console.log('No images found. Please add some images to the samples directory.');
     return;
   }
 
-  // Process with progress tracking
-  console.log('Processing images...\n');
+  // Example 1: Batch resize with progress tracking
+  console.log('1. Batch Resize with Progress Tracking');
+  console.log('-'.repeat(60));
 
-  const onProgress = (progress: BatchProgress): void => {
-    const bar = createProgressBar(progress.percentage);
-    process.stdout.write(`\r${bar} ${progress.percentage}% - ${path.basename(progress.current)}`);
-    if (progress.complete) {
-      console.log('\n');
+  const resizeOutputDir = path.join(outputDir, 'resized');
+  await fs.promises.mkdir(resizeOutputDir, { recursive: true });
+
+  const result1 = await batchResizeFiles(
+    images,
+    resizeOutputDir,
+    { width: 800 },
+    {
+      quality: 85,
+      onProgress: (progress: BatchProgress) => {
+        const bar = createProgressBar(progress.percentage);
+        process.stdout.write(
+          `\r${bar} ${progress.percentage}% - ${path.basename(progress.current)}`
+        );
+        if (progress.complete) {
+          console.log('\n');
+        }
+      },
     }
-  };
+  );
 
-  const result = await processBatch(
+  console.log(`  Success: ${result1.success.length}`);
+  console.log(`  Failed: ${result1.failed.length}`);
+  console.log(`  Duration: ${(result1.duration / 1000).toFixed(2)}s\n`);
+
+  // Example 2: Batch convert format
+  console.log('2. Batch Convert to WebP');
+  console.log('-'.repeat(60));
+
+  const convertOutputDir = path.join(outputDir, 'webp');
+  await fs.promises.mkdir(convertOutputDir, { recursive: true });
+
+  const result2 = await batchConvertFiles(images, convertOutputDir, 'webp', {
+    quality: 82,
+    onProgress: (progress: BatchProgress) => {
+      const bar = createProgressBar(progress.percentage);
+      process.stdout.write(`\r${bar} ${progress.percentage}%`);
+      if (progress.complete) {
+        console.log('\n');
+      }
+    },
+  });
+
+  console.log(`  Success: ${result2.success.length}`);
+  console.log(`  Failed: ${result2.failed.length}`);
+  console.log(`  Duration: ${(result2.duration / 1000).toFixed(2)}s\n`);
+
+  // Example 3: Batch optimize
+  console.log('3. Batch Optimize');
+  console.log('-'.repeat(60));
+
+  const optimizeOutputDir = path.join(outputDir, 'optimized');
+  await fs.promises.mkdir(optimizeOutputDir, { recursive: true });
+
+  const result3 = await batchOptimizeFiles(images, optimizeOutputDir, {
+    quality: 85,
+    strip: true,
+    onProgress: (progress: BatchProgress) => {
+      const bar = createProgressBar(progress.percentage);
+      process.stdout.write(`\r${bar} ${progress.percentage}%`);
+      if (progress.complete) {
+        console.log('\n');
+      }
+    },
+  });
+
+  console.log(`  Success: ${result3.success.length}`);
+  console.log(`  Failed: ${result3.failed.length}`);
+  console.log(`  Duration: ${(result3.duration / 1000).toFixed(2)}s\n`);
+
+  // Example 4: Custom batch processing with processBatch
+  console.log('4. Custom Batch Processing');
+  console.log('-'.repeat(60));
+
+  const customOutputDir = path.join(outputDir, 'custom');
+  await fs.promises.mkdir(customOutputDir, { recursive: true });
+
+  const result4 = await processBatch(
     images,
     (file) => {
-      const outputFile = path.join(outputDir, path.basename(file));
+      const outputFile = path.join(customOutputDir, path.basename(file));
       return [
         'convert',
         file,
         '-resize',
-        '1200x1200>', // Only shrink if larger
+        '600x600>', // Only shrink if larger
         '-quality',
-        '85',
+        '80',
         '-strip',
         outputFile,
       ];
     },
     {
-      parallel: 4,
-      onProgress,
+      parallel: 2, // Process 2 images at a time
+      onProgress: (progress: BatchProgress) => {
+        console.log(
+          `  Processing: ${path.basename(progress.current)} (${progress.index}/${progress.total})`
+        );
+      },
       continueOnError: true,
     }
   );
 
-  // Summary
-  console.log('Batch processing complete!');
-  console.log(`  Success: ${result.success.length}`);
-  console.log(`  Failed: ${result.failed.length}`);
-  console.log(`  Duration: ${(result.duration / 1000).toFixed(2)}s`);
+  console.log(` \n  Success: ${result4.success.length}`);
+  console.log(`  Failed: ${result4.failed.length}`);
+  console.log(`  Duration: ${(result4.duration / 1000).toFixed(2)}s\n`);
 
-  if (result.failed.length > 0) {
-    console.log('\nFailed files:');
-    for (const { file, error } of result.failed) {
+  if (result4.failed.length > 0) {
+    console.log('Failed files:');
+    for (const { file, error } of result4.failed) {
       console.log(`  ${path.basename(file)}: ${error.message}`);
     }
   }
+
+  console.log('\nBatch processing complete!');
 }
 
 function createProgressBar(percentage: number): string {
@@ -87,39 +168,6 @@ function createProgressBar(percentage: number): string {
   const filled = Math.round((percentage / 100) * width);
   const empty = width - filled;
   return `[${'='.repeat(filled)}${' '.repeat(empty)}]`;
-}
-
-function showApiExamples(): void {
-  console.log(`
-// Batch Processing Examples:
-
-// Find all images in a directory
-const images = await findImages('./photos', {
-  extensions: ['.jpg', '.png'],
-  recursive: true,
-});
-
-// Process with progress tracking
-const result = await processBatch(
-  images,
-  (file) => ['convert', file, '-resize', '800x800>', outputPath(file)],
-  {
-    parallel: 4,
-    onProgress: ({ percentage, current }) => {
-      console.log(\`\${percentage}% - \${current}\`);
-    },
-  }
-);
-
-// Quick batch resize
-await batchResizeFiles(images, './output', { width: 800 });
-
-// Quick batch optimize
-await batchOptimizeFiles(images, './output', { quality: 85 });
-
-// Quick batch convert
-await batchConvertFiles(images, './output', 'webp', { quality: 82 });
-`);
 }
 
 main().catch(console.error);
