@@ -610,7 +610,12 @@ jobs:
     name: Publish Release
     runs-on: ubuntu-24.04
     if: github.event_name != 'pull_request'
-    needs: version
+    needs:
+      - version
+      - windows
+      - linux-glibc
+      - linux-musl
+      - macos
 
     permissions:
       contents: write
