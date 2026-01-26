@@ -1,22 +1,6 @@
 name: Test Examples
 
 on:
-  push:
-    branches: [main]
-    paths:
-      - "src/**"
-      - "examples/**"
-      - "tests/**"
-      - "package.json"
-      - ".github/workflows/test.yml"
-  pull_request:
-    branches: [main]
-    paths:
-      - "src/**"
-      - "examples/**"
-      - "tests/**"
-      - "package.json"
-      - ".github/workflows/test.yml"
   workflow_dispatch:
 
 jobs:
