@@ -1,3 +1,5 @@
+> **⚠️ Notice** — This package is currently in beta. APIs may change before the stable release. Please report any issues you encounter on [GitHub](https://github.com/iqbal-rashed/imagemagick-nodejs/issues).
+
 <div align="center">
 
   <!-- Logo/Icon -->

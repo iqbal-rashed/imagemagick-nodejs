@@ -11,14 +11,12 @@ import * as fs from 'fs';
 async function main(): Promise<void> {
   console.log('ImageMagick Batch Processing Example\n');
 
-  const inputDir = process.argv[2];
-  const outputDir = process.argv[3] ?? './output';
+  // Use samples folder for input, outputs folder for output
+  const inputDir = process.argv[2] ?? path.join(__dirname, '../samples');
+  const outputDir = process.argv[3] ?? path.join(__dirname, '../outputs');
 
-  if (inputDir === undefined) {
-    console.log('Usage: npx ts-node examples/batch.ts <input-dir> [output-dir]');
-    showApiExamples();
-    return;
-  }
+  console.log(`Input directory: ${path.relative(process.cwd(), inputDir)}`);
+  console.log(`Output directory: ${path.relative(process.cwd(), outputDir)}\n`);
 
   // Create output directory
   await fs.promises.mkdir(outputDir, { recursive: true });

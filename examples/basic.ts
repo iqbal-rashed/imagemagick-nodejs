@@ -6,6 +6,7 @@
 
 import { imageMagick, identify, isAvailable, getVersion } from '../src/index';
 import * as path from 'path';
+import * as fs from 'fs';
 
 async function main(): Promise<void> {
   console.log('ImageMagick Node.js Wrapper - Basic Examples\n');
@@ -21,13 +22,15 @@ async function main(): Promise<void> {
   const version = await getVersion();
   console.log(`Using ImageMagick ${version.version}\n`);
 
-  const inputImage = process.argv[2];
-  if (inputImage === undefined) {
-    console.log('Usage: npx ts-node examples/basic.ts <input-image>');
-    console.log('\nNo input image provided, showing API examples only:\n');
-    showApiExamples();
-    return;
-  }
+  // Use samples folder for input, outputs folder for output
+  const inputImage = process.argv[2] ?? path.join(__dirname, '../samples/nextdownloader.png');
+  const outputDir = path.join(__dirname, '../outputs');
+
+  // Create outputs directory if it doesn't exist
+  await fs.promises.mkdir(outputDir, { recursive: true });
+
+  console.log(`Input: ${path.relative(process.cwd(), inputImage)}`);
+  console.log(`Output directory: ${path.relative(process.cwd(), outputDir)}\n`);
 
   // Get image info
   console.log('1. Getting image information:');
@@ -40,12 +43,11 @@ async function main(): Promise<void> {
 
   // Example: Resize and convert
   console.log('2. Resizing to 800px width:');
-  const outputDir = path.dirname(inputImage);
   const baseName = path.basename(inputImage, path.extname(inputImage));
   const resizedPath = path.join(outputDir, `${baseName}_resized.jpg`);
 
   await imageMagick(inputImage).resize(800).quality(85).toFile(resizedPath);
-  console.log(`   Saved: ${resizedPath}\n`);
+  console.log(`   Saved: ${path.relative(process.cwd(), resizedPath)}\n`);
 
   // Example: Create thumbnail
   console.log('3. Creating 200x200 thumbnail:');
@@ -56,28 +58,28 @@ async function main(): Promise<void> {
     .extent(200, 200, 'Center', 'white')
     .quality(80)
     .toFile(thumbPath);
-  console.log(`   Saved: ${thumbPath}\n`);
+  console.log(`   Saved: ${path.relative(process.cwd(), thumbPath)}\n`);
 
   // Example: Apply effects
   console.log('4. Applying blur effect:');
   const blurredPath = path.join(outputDir, `${baseName}_blurred.jpg`);
 
   await imageMagick(inputImage).resize(600).blur(5).toFile(blurredPath);
-  console.log(`   Saved: ${blurredPath}\n`);
+  console.log(`   Saved: ${path.relative(process.cwd(), blurredPath)}\n`);
 
   // Example: Grayscale
   console.log('5. Converting to grayscale:');
   const grayPath = path.join(outputDir, `${baseName}_gray.jpg`);
 
   await imageMagick(inputImage).resize(600).grayscale().toFile(grayPath);
-  console.log(`   Saved: ${grayPath}\n`);
+  console.log(`   Saved: ${path.relative(process.cwd(), grayPath)}\n`);
 
   // Example: Sepia tone
   console.log('6. Applying sepia effect:');
   const sepiaPath = path.join(outputDir, `${baseName}_sepia.jpg`);
 
   await imageMagick(inputImage).resize(600).sepia(80).toFile(sepiaPath);
-  console.log(`   Saved: ${sepiaPath}\n`);
+  console.log(`   Saved: ${path.relative(process.cwd(), sepiaPath)}\n`);
 
   console.log('Done! All images processed successfully.');
 }

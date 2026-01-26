@@ -1,6 +1,6 @@
 {
   "name": "imagemagick-nodejs",
-  "version": "1.0.0",
+  "version": "0.2.1",
   "description": "A comprehensive Node.js wrapper for ImageMagick CLI",
   "author": {
     "name": "Rashed Iqbal",
@@ -40,7 +40,9 @@
     "typecheck": "tsc --noEmit",
     "test": "vitest",
     "test:run": "vitest run",
-    "postinstall": "node dist/install.js",
+    "download": "tsx ./src/scripts/install.ts",
+    "download:prod": "node ./dist/install.js",
+    "postinstall": "node -e \"process.env.INIT_CWD !== process.cwd() && require('child_process').execSync('npm run download:prod', { stdio: 'inherit' });\"",
     "prepublishOnly": "npm run build"
   },
   "repository": {

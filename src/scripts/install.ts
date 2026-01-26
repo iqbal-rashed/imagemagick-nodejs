@@ -87,6 +87,7 @@ const ALLOWED_REDIRECT_DOMAINS = [
   'objects.githubusercontent.com',
   'codeload.github.com',
   'raw.githubusercontent.com',
+  'release-assets.githubusercontent.com',
 ];
 
 /**
@@ -98,8 +99,8 @@ function validateRedirectUrl(url: string): boolean {
     const hostname = parsed.hostname.toLowerCase();
 
     // Check if hostname ends with one of the allowed domains
-    return ALLOWED_REDIRECT_DOMAINS.some((domain) =>
-      hostname === domain || hostname.endsWith(`.${domain}`)
+    return ALLOWED_REDIRECT_DOMAINS.some(
+      (domain) => hostname === domain || hostname.endsWith(`.${domain}`)
     );
   } catch {
     return false;
