@@ -239,41 +239,36 @@ jobs:
             ubuntu:22.04 \
             /bin/bash -c '
               set -ex
-              
+
               export DEBIAN_FRONTEND=noninteractive
               apt-get update -y
-              
+
               # Install build essentials
               apt-get install -y build-essential autoconf automake libtool pkg-config git curl
-              
-              # Robust JPEG library installation (try multiple package names)
-              install_jpeg() {
-                apt-get install -y libjpeg-turbo8-dev 2>/dev/null && return 0
-                apt-get install -y libjpeg62-turbo-dev 2>/dev/null && return 0
-                apt-get install -y libjpeg-dev 2>/dev/null && return 0
-                echo "ERROR: Could not install any JPEG development library"
-                exit 1
-              }
-              install_jpeg
-              
-              # Install other format dependencies
+
+              # Install static libraries for all dependencies
+              # This ensures the binary is truly static and portable
               apt-get install -y \
+                libjpeg-turbo8-dev \
                 libpng-dev \
                 libwebp-dev \
                 libheif-dev \
                 libopenjp2-7-dev \
-                libtiff-dev \
+                libtiff5-dev \
                 ghostscript libgs-dev \
                 libxml2-dev \
                 liblzma-dev \
-                zlib1g-dev
-              
+                zlib1g-dev \
+                libbz2-dev
+
               # Clone ImageMagick
               cd /workspace
               git clone --depth 1 -b main https://github.com/ImageMagick/ImageMagick.git
               cd ImageMagick
-              
-              # Configure with static linking for portability
+
+              # Configure with fully static linking for portability
+              # LDFLAGS="-static" forces all libraries (including delegates) to be linked statically
+              LDFLAGS="-static" \
               ./configure \
                 --prefix=/opt/imagemagick \
                 --disable-shared \
@@ -289,11 +284,23 @@ jobs:
                 --with-openjp2 \
                 --with-tiff \
                 --with-gslib \
-                --with-xml
-              
+                --with-xml \
+                --without-x \
+                --without-fontconfig \
+                --without-freetype
+
               make -j$(nproc)
               make install
-              
+
+              # Verify the binary is truly static (no dynamic dependencies)
+              echo "=== Checking dynamic library dependencies ==="
+              if ldd /opt/imagemagick/bin/magick 2>/dev/null | grep -q "not a dynamic executable"; then
+                echo "✓ Binary is statically linked"
+              else
+                echo "⚠ Warning: Binary may have dynamic dependencies:"
+                ldd /opt/imagemagick/bin/magick 2>/dev/null || echo "(Not a dynamic executable - this is good!)"
+              fi
+
               # Smoke test: verify required formats are available
               echo "=== Format Support Check ==="
               /opt/imagemagick/bin/magick -list format | head -50
@@ -375,19 +382,22 @@ jobs:
             alpine:3.19 \
             /bin/sh -c '
               set -ex
-              
+
               # Install build essentials
               apk add --no-cache \
                 build-base autoconf automake libtool pkgconf git curl \
                 jpeg-dev libpng-dev libwebp-dev libheif-dev openjpeg-dev \
-                tiff-dev ghostscript-dev libxml2-dev xz-dev zlib-dev
-              
+                tiff-dev ghostscript-dev libxml2-dev xz-dev zlib-dev \
+                bzip2-dev
+
               # Clone ImageMagick
               cd /workspace
               git clone --depth 1 -b main https://github.com/ImageMagick/ImageMagick.git
               cd ImageMagick
-              
-              # Configure with static linking for portability
+
+              # Configure with fully static linking for portability
+              # LDFLAGS="-static" forces all libraries to be linked statically
+              LDFLAGS="-static" \
               ./configure \
                 --prefix=/opt/imagemagick \
                 --disable-shared \
@@ -403,11 +413,22 @@ jobs:
                 --with-openjp2 \
                 --with-tiff \
                 --with-gslib \
-                --with-xml
-              
+                --with-xml \
+                --without-x \
+                --without-fontconfig
+
               make -j$(nproc)
               make install
-              
+
+              # Verify the binary is truly static (no dynamic dependencies)
+              echo "=== Checking dynamic library dependencies ==="
+              if ldd /opt/imagemagick/bin/magick 2>/dev/null | grep -q "not a dynamic executable"; then
+                echo "✓ Binary is statically linked"
+              else
+                echo "⚠ Warning: Binary may have dynamic dependencies:"
+                ldd /opt/imagemagick/bin/magick 2>/dev/null || echo "(Not a dynamic executable - this is good!)"
+              fi
+
               # Smoke test: verify required formats are available
               echo "=== Format Support Check ==="
               /opt/imagemagick/bin/magick -list format | head -50
