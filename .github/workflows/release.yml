@@ -65,7 +65,7 @@ jobs:
     needs: version
 
     strategy:
-      fail-fast: false
+      fail-fast: true
       matrix:
         arch: [x64, x86]
 
@@ -163,7 +163,7 @@ jobs:
     needs: version
 
     strategy:
-      fail-fast: false
+      fail-fast: true
       matrix:
         arch: [amd64, arm64]
 
@@ -298,7 +298,7 @@ jobs:
     needs: version
 
     strategy:
-      fail-fast: false
+      fail-fast: true
       matrix:
         arch: [amd64, arm64]
 
@@ -411,7 +411,7 @@ jobs:
     needs: version
 
     strategy:
-      fail-fast: false
+      fail-fast: true
       matrix:
         runner: [macos-15, macos-14]
         include:
