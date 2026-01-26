@@ -61,7 +61,7 @@ jobs:
   # ============================================================================
   windows:
     name: Windows ${{ matrix.arch }}
-    runs-on: windows-2022
+    runs-on: windows-2025
     needs: version
 
     strategy:
@@ -413,11 +413,11 @@ jobs:
     strategy:
       fail-fast: false
       matrix:
-        runner: [macos-15, macos-13]
+        runner: [macos-15, macos-14]
         include:
           - runner: macos-15
             arch: arm64
-          - runner: macos-13
+          - runner: macos-14
             arch: x64
 
     steps:
