@@ -1,0 +1,121 @@
+/**
+ * Example: Basic Image Operations
+ *
+ * Demonstrates common image processing tasks using the ImageMagick wrapper.
+ */
+
+import { imageMagick, identify, isAvailable, getVersion } from '../src/index';
+import * as path from 'path';
+
+async function main(): Promise<void> {
+  console.log('ImageMagick Node.js Wrapper - Basic Examples\n');
+
+  // Check if ImageMagick is available
+  const available = await isAvailable();
+  if (!available) {
+    console.error('ImageMagick is not installed or not found in PATH');
+    process.exit(1);
+  }
+
+  // Get version info
+  const version = await getVersion();
+  console.log(`Using ImageMagick ${version.version}\n`);
+
+  const inputImage = process.argv[2];
+  if (inputImage === undefined) {
+    console.log('Usage: npx ts-node examples/basic.ts <input-image>');
+    console.log('\nNo input image provided, showing API examples only:\n');
+    showApiExamples();
+    return;
+  }
+
+  // Get image info
+  console.log('1. Getting image information:');
+  const info = await identify(inputImage);
+  console.log(`   Format: ${info.format}`);
+  console.log(`   Dimensions: ${info.width}x${info.height}`);
+  console.log(`   Colorspace: ${info.colorspace}`);
+  console.log(`   Depth: ${info.depth} bits`);
+  console.log('');
+
+  // Example: Resize and convert
+  console.log('2. Resizing to 800px width:');
+  const outputDir = path.dirname(inputImage);
+  const baseName = path.basename(inputImage, path.extname(inputImage));
+  const resizedPath = path.join(outputDir, `${baseName}_resized.jpg`);
+
+  await imageMagick(inputImage).resize(800).quality(85).toFile(resizedPath);
+  console.log(`   Saved: ${resizedPath}\n`);
+
+  // Example: Create thumbnail
+  console.log('3. Creating 200x200 thumbnail:');
+  const thumbPath = path.join(outputDir, `${baseName}_thumb.jpg`);
+
+  await imageMagick(inputImage)
+    .thumbnail(200, 200)
+    .extent(200, 200, 'Center', 'white')
+    .quality(80)
+    .toFile(thumbPath);
+  console.log(`   Saved: ${thumbPath}\n`);
+
+  // Example: Apply effects
+  console.log('4. Applying blur effect:');
+  const blurredPath = path.join(outputDir, `${baseName}_blurred.jpg`);
+
+  await imageMagick(inputImage).resize(600).blur(5).toFile(blurredPath);
+  console.log(`   Saved: ${blurredPath}\n`);
+
+  // Example: Grayscale
+  console.log('5. Converting to grayscale:');
+  const grayPath = path.join(outputDir, `${baseName}_gray.jpg`);
+
+  await imageMagick(inputImage).resize(600).grayscale().toFile(grayPath);
+  console.log(`   Saved: ${grayPath}\n`);
+
+  // Example: Sepia tone
+  console.log('6. Applying sepia effect:');
+  const sepiaPath = path.join(outputDir, `${baseName}_sepia.jpg`);
+
+  await imageMagick(inputImage).resize(600).sepia(80).toFile(sepiaPath);
+  console.log(`   Saved: ${sepiaPath}\n`);
+
+  console.log('Done! All images processed successfully.');
+}
+
+function showApiExamples(): void {
+  console.log(`
+// Fluent API Examples:
+
+// Basic resize
+await imageMagick('input.jpg')
+  .resize(800, 600)
+  .quality(85)
+  .toFile('output.jpg');
+
+// Create thumbnail with padding
+await imageMagick('photo.jpg')
+  .thumbnail(200, 200)
+  .extent(200, 200, 'Center', 'white')
+  .toFile('thumbnail.jpg');
+
+// Apply multiple effects
+await imageMagick('image.png')
+  .resize(1200)
+  .sharpen(1.5)
+  .modulate(110, 120, 100)  // brightness, saturation, hue
+  .quality(90)
+  .toFile('enhanced.jpg');
+
+// Convert to grayscale with vignette
+await imageMagick('portrait.jpg')
+  .grayscale()
+  .vignette(0, 10)
+  .toFile('artistic.jpg');
+
+// Get image info
+const info = await identify('photo.jpg');
+console.log(\`\${info.width}x\${info.height} \${info.format}\`);
+`);
+}
+
+main().catch(console.error);

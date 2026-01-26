@@ -1,0 +1,643 @@
+# ImageMagick Portable Binary Build Workflow
+#
+# This workflow builds small, portable ImageMagick binaries for use as Node.js binary wrappers.
+# Based on the official ImageMagick release workflow but optimized for minimal bundle size.
+#
+# Key differences from official:
+# - Only Q16-HDRI builds (most common for Node.js usage)
+# - tar.gz instead of 7z for cross-platform compatibility
+# - Minimal runtime files (no installers, no PerlMagick)
+# - No code signing
+# - Rolling prerelease to bin-main tag
+
+name: Build ImageMagick Binaries
+
+on:
+  workflow_dispatch:
+
+concurrency:
+  group: ${{ github.workflow }}-${{ github.ref }}
+  cancel-in-progress: true
+
+env:
+  IMAGEMAGICK_REPO: https://github.com/ImageMagick/ImageMagick.git
+  IMAGEMAGICK_BRANCH: main
+
+jobs:
+  # ============================================================================
+  # VERSION EXTRACTION
+  # Similar to official workflow - extracts version from ImageMagick source
+  # ============================================================================
+  version:
+    name: Get ImageMagick Version
+    runs-on: ubuntu-24.04
+    outputs:
+      version: ${{ steps.version.outputs.version }}
+      commit: ${{ steps.version.outputs.commit }}
+
+    steps:
+      - name: Clone ImageMagick
+        uses: actions/checkout@v4
+        with:
+          repository: ImageMagick/ImageMagick
+          ref: main
+          path: ImageMagick
+          persist-credentials: false
+
+      - name: Extract version
+        id: version
+        run: |
+          cd ImageMagick
+          version=$(grep -oP "PACKAGE_VERSION='\K[0-9\.-]*" configure | head -1)
+          commit=$(git rev-parse --short HEAD)
+          echo "version=$version" >> $GITHUB_OUTPUT
+          echo "commit=$commit" >> $GITHUB_OUTPUT
+          echo "ImageMagick version: $version (commit: $commit)"
+
+  # ============================================================================
+  # WINDOWS BUILDS
+  # Uses official ImageMagick Windows build scripts from their repo
+  # Only x64 and x86 architectures (no arm64)
+  # ============================================================================
+  windows:
+    name: Windows ${{ matrix.arch }}
+    runs-on: windows-2022
+    needs: version
+
+    strategy:
+      fail-fast: false
+      matrix:
+        arch: [x64, x86]
+
+    steps:
+      - name: Clone this repo (for release context)
+        uses: actions/checkout@v4
+        with:
+          persist-credentials: false
+
+      - name: Clone ImageMagick
+        uses: actions/checkout@v4
+        with:
+          repository: ImageMagick/ImageMagick
+          ref: main
+          path: ImageMagick
+          persist-credentials: false
+
+      # Official build step: download configure tool
+      - name: Download configure
+        shell: cmd
+        run: |
+          ImageMagick\.github\build\windows\download-configure.cmd
+
+      # Official build step: download dependencies
+      # Uses static build with linked runtime for portability
+      - name: Download dependencies
+        shell: cmd
+        run: |
+          ImageMagick\.github\build\windows\download-dependencies.cmd windows-${{ matrix.arch }}-static-openMP-linked-runtime.zip
+
+      # Official build step: run configure
+      - name: Configure ImageMagick
+        shell: cmd
+        working-directory: Configure
+        run: |
+          Configure.Release.x64.exe /noWizard /VS2022 /hdri /Q16 /${{ matrix.arch }} /static /linkRuntime
+
+      # Official build step: build with msbuild
+      - name: Build ImageMagick
+        shell: cmd
+        run: |
+          call "C:\Program Files\Microsoft Visual Studio\2022\Enterprise\Common7\Tools\VsDevCmd.bat"
+          msbuild /m /t:Rebuild /p:Configuration=Release,Platform=${{ matrix.arch }}
+
+      # Package minimal portable bundle (differs from official - smaller bundle)
+      - name: Create portable bundle
+        shell: pwsh
+        env:
+          VERSION: ${{ needs.version.outputs.version }}
+          ARCH: ${{ matrix.arch }}
+        run: |
+          $bundleDir = "imagemagick-$env:VERSION-windows-$env:ARCH"
+          New-Item -Name $bundleDir -ItemType directory
+
+          # Core executable
+          Copy-Item "Artifacts\bin\magick.exe" $bundleDir
+
+          # Required config files
+          Copy-Item "Artifacts\bin\*.xml" $bundleDir
+          Copy-Item "Artifacts\bin\sRGB.icc" $bundleDir
+
+          # License
+          Copy-Item "Artifacts\NOTICE.txt" $bundleDir -ErrorAction SilentlyContinue
+          Copy-Item "ImageMagick\LICENSE" "$bundleDir\LICENSE.txt" -ErrorAction SilentlyContinue
+
+          # Verify build
+          & "$bundleDir\magick.exe" -version
+
+          # Create tarball
+          tar -czvf "$bundleDir.tar.gz" $bundleDir
+
+          # Generate SHA256
+          $hash = (Get-FileHash -Algorithm SHA256 "$bundleDir.tar.gz").Hash.ToLower()
+          "$hash  $bundleDir.tar.gz" | Out-File -Encoding ASCII "$bundleDir.sha256"
+
+          echo "Created: $bundleDir.tar.gz"
+          Get-ChildItem "$bundleDir.*"
+
+      - name: Upload artifacts
+        uses: actions/upload-artifact@v4
+        with:
+          name: imagemagick-${{ needs.version.outputs.version }}-windows-${{ matrix.arch }}
+          path: |
+            imagemagick-*.tar.gz
+            imagemagick-*.sha256
+
+  # ============================================================================
+  # LINUX BUILDS (GLIBC)
+  # Ubuntu-based builds for standard glibc systems
+  # Uses QEMU for arm64 cross-compilation
+  # ============================================================================
+  linux-glibc:
+    name: Linux glibc ${{ matrix.arch }}
+    runs-on: ubuntu-24.04
+    needs: version
+
+    strategy:
+      fail-fast: false
+      matrix:
+        arch: [amd64, arm64]
+
+    steps:
+      - name: Set up QEMU (for arm64)
+        if: matrix.arch == 'arm64'
+        uses: docker/setup-qemu-action@v3
+        with:
+          platforms: arm64
+
+      - name: Clone this repo
+        uses: actions/checkout@v4
+        with:
+          persist-credentials: false
+
+      - name: Build in container
+        run: |
+          docker run --rm \
+            --platform linux/${{ matrix.arch }} \
+            -v ${{ github.workspace }}:/workspace \
+            -e VERSION="${{ needs.version.outputs.version }}" \
+            -e ARCH="${{ matrix.arch }}" \
+            ubuntu:22.04 \
+            /bin/bash -c '
+              set -ex
+              
+              export DEBIAN_FRONTEND=noninteractive
+              apt-get update -y
+              
+              # Install build essentials
+              apt-get install -y build-essential autoconf automake libtool pkg-config git curl
+              
+              # Robust JPEG library installation (try multiple package names)
+              install_jpeg() {
+                apt-get install -y libjpeg-turbo8-dev 2>/dev/null && return 0
+                apt-get install -y libjpeg62-turbo-dev 2>/dev/null && return 0
+                apt-get install -y libjpeg-dev 2>/dev/null && return 0
+                echo "ERROR: Could not install any JPEG development library"
+                exit 1
+              }
+              install_jpeg
+              
+              # Install other format dependencies
+              apt-get install -y \
+                libpng-dev \
+                libwebp-dev \
+                libheif-dev \
+                libopenjp2-7-dev \
+                libtiff-dev \
+                ghostscript libgs-dev \
+                libxml2-dev \
+                liblzma-dev \
+                zlib1g-dev
+              
+              # Clone ImageMagick
+              cd /workspace
+              git clone --depth 1 -b main https://github.com/ImageMagick/ImageMagick.git
+              cd ImageMagick
+              
+              # Configure with static linking for portability
+              ./configure \
+                --prefix=/opt/imagemagick \
+                --disable-shared \
+                --enable-static \
+                --with-quantum-depth=16 \
+                --enable-hdri \
+                --without-perl \
+                --without-magick-plus-plus \
+                --with-png \
+                --with-jpeg \
+                --with-webp \
+                --with-heic \
+                --with-openjp2 \
+                --with-tiff \
+                --with-gslib \
+                --with-xml
+              
+              make -j$(nproc)
+              make install
+              
+              # Smoke test: verify required formats are available
+              echo "=== Format Support Check ==="
+              /opt/imagemagick/bin/magick -list format | head -50
+              
+              for fmt in PNG JPEG WEBP HEIC PDF; do
+                if /opt/imagemagick/bin/magick -list format | grep -qi "$fmt"; then
+                  echo "✓ $fmt support verified"
+                else
+                  echo "✗ WARNING: $fmt support not found"
+                fi
+              done
+              
+              # Create minimal bundle
+              BUNDLE_DIR="/workspace/imagemagick-${VERSION}-linux-glibc-${ARCH}"
+              mkdir -p "$BUNDLE_DIR"
+              
+              # Copy only essential files
+              cp -r /opt/imagemagick/bin "$BUNDLE_DIR/"
+              cp -r /opt/imagemagick/lib "$BUNDLE_DIR/" 2>/dev/null || true
+              cp -r /opt/imagemagick/etc "$BUNDLE_DIR/" 2>/dev/null || true
+              mkdir -p "$BUNDLE_DIR/share/ImageMagick-7"
+              cp -r /opt/imagemagick/share/ImageMagick-7/* "$BUNDLE_DIR/share/ImageMagick-7/" 2>/dev/null || true
+              
+              # Add license
+              cp /workspace/ImageMagick/LICENSE "$BUNDLE_DIR/LICENSE.txt"
+              
+              # Create tarball
+              cd /workspace
+              tar -czvf "${BUNDLE_DIR##*/}.tar.gz" "${BUNDLE_DIR##*/}"
+              sha256sum "${BUNDLE_DIR##*/}.tar.gz" > "${BUNDLE_DIR##*/}.sha256"
+              
+              echo "=== Bundle created ==="
+              ls -la "${BUNDLE_DIR##*/}."*
+            '
+
+      - name: Upload artifacts
+        uses: actions/upload-artifact@v4
+        with:
+          name: imagemagick-${{ needs.version.outputs.version }}-linux-glibc-${{ matrix.arch }}
+          path: |
+            imagemagick-*.tar.gz
+            imagemagick-*.sha256
+
+  # ============================================================================
+  # LINUX BUILDS (MUSL)
+  # Alpine-based builds for musl libc systems (e.g., Alpine Docker containers)
+  # Uses QEMU for arm64 cross-compilation
+  # ============================================================================
+  linux-musl:
+    name: Linux musl ${{ matrix.arch }}
+    runs-on: ubuntu-24.04
+    needs: version
+
+    strategy:
+      fail-fast: false
+      matrix:
+        arch: [amd64, arm64]
+
+    steps:
+      - name: Set up QEMU (for arm64)
+        if: matrix.arch == 'arm64'
+        uses: docker/setup-qemu-action@v3
+        with:
+          platforms: arm64
+
+      - name: Clone this repo
+        uses: actions/checkout@v4
+        with:
+          persist-credentials: false
+
+      - name: Build in Alpine container
+        run: |
+          docker run --rm \
+            --platform linux/${{ matrix.arch }} \
+            -v ${{ github.workspace }}:/workspace \
+            -e VERSION="${{ needs.version.outputs.version }}" \
+            -e ARCH="${{ matrix.arch }}" \
+            alpine:3.19 \
+            /bin/sh -c '
+              set -ex
+              
+              # Install build essentials
+              apk add --no-cache \
+                build-base autoconf automake libtool pkgconf git curl \
+                jpeg-dev libpng-dev libwebp-dev libheif-dev openjpeg-dev \
+                tiff-dev ghostscript-dev libxml2-dev xz-dev zlib-dev
+              
+              # Clone ImageMagick
+              cd /workspace
+              git clone --depth 1 -b main https://github.com/ImageMagick/ImageMagick.git
+              cd ImageMagick
+              
+              # Configure with static linking for portability
+              ./configure \
+                --prefix=/opt/imagemagick \
+                --disable-shared \
+                --enable-static \
+                --with-quantum-depth=16 \
+                --enable-hdri \
+                --without-perl \
+                --without-magick-plus-plus \
+                --with-png \
+                --with-jpeg \
+                --with-webp \
+                --with-heic \
+                --with-openjp2 \
+                --with-tiff \
+                --with-gslib \
+                --with-xml
+              
+              make -j$(nproc)
+              make install
+              
+              # Smoke test: verify required formats are available
+              echo "=== Format Support Check ==="
+              /opt/imagemagick/bin/magick -list format | head -50
+              
+              for fmt in PNG JPEG WEBP HEIC PDF; do
+                if /opt/imagemagick/bin/magick -list format | grep -qi "$fmt"; then
+                  echo "✓ $fmt support verified"
+                else
+                  echo "✗ WARNING: $fmt support not found"
+                fi
+              done
+              
+              # Create minimal bundle
+              BUNDLE_DIR="/workspace/imagemagick-${VERSION}-linux-musl-${ARCH}"
+              mkdir -p "$BUNDLE_DIR"
+              
+              # Copy only essential files
+              cp -r /opt/imagemagick/bin "$BUNDLE_DIR/"
+              cp -r /opt/imagemagick/lib "$BUNDLE_DIR/" 2>/dev/null || true
+              cp -r /opt/imagemagick/etc "$BUNDLE_DIR/" 2>/dev/null || true
+              mkdir -p "$BUNDLE_DIR/share/ImageMagick-7"
+              cp -r /opt/imagemagick/share/ImageMagick-7/* "$BUNDLE_DIR/share/ImageMagick-7/" 2>/dev/null || true
+              
+              # Add license
+              cp /workspace/ImageMagick/LICENSE "$BUNDLE_DIR/LICENSE.txt"
+              
+              # Create tarball
+              cd /workspace
+              tar -czvf "${BUNDLE_DIR##*/}.tar.gz" "${BUNDLE_DIR##*/}"
+              sha256sum "${BUNDLE_DIR##*/}.tar.gz" > "${BUNDLE_DIR##*/}.sha256"
+              
+              echo "=== Bundle created ==="
+              ls -la "${BUNDLE_DIR##*/}."*
+            '
+
+      - name: Upload artifacts
+        uses: actions/upload-artifact@v4
+        with:
+          name: imagemagick-${{ needs.version.outputs.version }}-linux-musl-${{ matrix.arch }}
+          path: |
+            imagemagick-*.tar.gz
+            imagemagick-*.sha256
+
+  # ============================================================================
+  # MACOS BUILDS
+  # Native macOS builds with Homebrew dependencies
+  # Uses dylibbundler to bundle dynamic libraries
+  # ============================================================================
+  macos:
+    name: macOS ${{ matrix.runner == 'macos-15' && 'arm64' || 'x64' }}
+    runs-on: ${{ matrix.runner }}
+    needs: version
+
+    strategy:
+      fail-fast: false
+      matrix:
+        runner: [macos-15, macos-13]
+        include:
+          - runner: macos-15
+            arch: arm64
+          - runner: macos-13
+            arch: x64
+
+    steps:
+      - name: Clone this repo
+        uses: actions/checkout@v4
+        with:
+          persist-credentials: false
+
+      - name: Install dependencies via Homebrew
+        run: |
+          brew update
+          brew install \
+            jpeg libpng webp libheif ghostscript \
+            openjpeg libtiff libxml2 xz \
+            autoconf automake libtool pkg-config \
+            dylibbundler
+
+      - name: Clone ImageMagick
+        uses: actions/checkout@v4
+        with:
+          repository: ImageMagick/ImageMagick
+          ref: main
+          path: ImageMagick
+          persist-credentials: false
+
+      - name: Build ImageMagick
+        working-directory: ImageMagick
+        run: |
+          ./configure \
+            --prefix=${{ github.workspace }}/install \
+            --with-quantum-depth=16 \
+            --enable-hdri \
+            --without-perl \
+            --without-magick-plus-plus \
+            --with-png \
+            --with-jpeg \
+            --with-webp \
+            --with-heic \
+            --with-openjp2 \
+            --with-tiff \
+            --with-gslib \
+            --with-xml
+
+          make -j$(sysctl -n hw.ncpu)
+          make install
+
+      - name: Bundle dylibs
+        run: |
+          INSTALL_DIR="${{ github.workspace }}/install"
+
+          # Create lib directory if it doesn't exist
+          mkdir -p "$INSTALL_DIR/lib"
+
+          # Use dylibbundler to bundle all dependencies
+          dylibbundler -of -b \
+            -x "$INSTALL_DIR/bin/magick" \
+            -d "$INSTALL_DIR/lib" \
+            -p @executable_path/../lib
+
+          # Verify the binary works standalone
+          echo "=== Verifying bundled binary ==="
+          otool -L "$INSTALL_DIR/bin/magick"
+
+      - name: Smoke test
+        run: |
+          INSTALL_DIR="${{ github.workspace }}/install"
+
+          echo "=== Format Support Check ==="
+          "$INSTALL_DIR/bin/magick" -list format | head -50
+
+          for fmt in PNG JPEG WEBP HEIC PDF; do
+            if "$INSTALL_DIR/bin/magick" -list format | grep -qi "$fmt"; then
+              echo "✓ $fmt support verified"
+            else
+              echo "✗ WARNING: $fmt support not found"
+            fi
+          done
+
+      - name: Create portable bundle
+        env:
+          VERSION: ${{ needs.version.outputs.version }}
+          ARCH: ${{ matrix.arch }}
+        run: |
+          BUNDLE_DIR="imagemagick-${VERSION}-macos-${ARCH}"
+          mkdir -p "$BUNDLE_DIR"
+
+          # Copy essential files
+          cp -r ${{ github.workspace }}/install/bin "$BUNDLE_DIR/"
+          cp -r ${{ github.workspace }}/install/lib "$BUNDLE_DIR/"
+          cp -r ${{ github.workspace }}/install/etc "$BUNDLE_DIR/" 2>/dev/null || true
+          mkdir -p "$BUNDLE_DIR/share"
+          cp -r ${{ github.workspace }}/install/share/ImageMagick-7 "$BUNDLE_DIR/share/" 2>/dev/null || true
+
+          # Add license
+          cp ImageMagick/LICENSE "$BUNDLE_DIR/LICENSE.txt"
+
+          # Create tarball
+          tar -czvf "${BUNDLE_DIR}.tar.gz" "$BUNDLE_DIR"
+          shasum -a 256 "${BUNDLE_DIR}.tar.gz" > "${BUNDLE_DIR}.sha256"
+
+          echo "=== Bundle created ==="
+          ls -la "${BUNDLE_DIR}."*
+
+      - name: Upload artifacts
+        uses: actions/upload-artifact@v4
+        with:
+          name: imagemagick-${{ needs.version.outputs.version }}-macos-${{ matrix.arch }}
+          path: |
+            imagemagick-*.tar.gz
+            imagemagick-*.sha256
+
+  # ============================================================================
+  # RELEASE PUBLISHING
+  # Creates/updates a rolling prerelease with all artifacts
+  # ============================================================================
+  release:
+    name: Publish Release
+    runs-on: ubuntu-24.04
+    if: github.event_name != 'pull_request'
+    needs:
+      - version
+      - windows
+      - linux-glibc
+      - linux-musl
+      - macos
+
+    permissions:
+      contents: write
+
+    steps:
+      - name: Clone this repo
+        uses: actions/checkout@v4
+        with:
+          persist-credentials: false
+
+      - name: Download all artifacts
+        uses: actions/download-artifact@v4
+        with:
+          path: artifacts
+          merge-multiple: true
+
+      - name: List artifacts
+        run: |
+          echo "=== Downloaded artifacts ==="
+          find artifacts -type f -name "*.tar.gz" -o -name "*.sha256" | sort
+          ls -la artifacts/
+
+      - name: Create/Update rolling release
+        env:
+          GH_TOKEN: ${{ github.token }}
+          VERSION: ${{ needs.version.outputs.version }}
+          IM_COMMIT: ${{ needs.version.outputs.commit }}
+          WRAPPER_COMMIT: ${{ github.sha }}
+        run: |
+          # Delete existing release if it exists
+          gh release delete bin-main --yes 2>/dev/null || true
+
+          # Delete existing tag if it exists
+          git push origin :refs/tags/bin-main 2>/dev/null || true
+
+          # Create release notes
+          cat > release_notes.md << EOF
+          # ImageMagick Portable Binaries
+
+          **ImageMagick Version:** ${VERSION}
+          **ImageMagick Commit:** [${IM_COMMIT}](https://github.com/ImageMagick/ImageMagick/commit/${IM_COMMIT})
+          **Wrapper Repo Commit:** [${WRAPPER_COMMIT:0:7}](https://github.com/${{ github.repository }}/commit/${WRAPPER_COMMIT})
+          **Built:** $(date -u +"%Y-%m-%d %H:%M:%S UTC")
+
+          ## Included Platforms
+
+          | Platform | Architecture | File |
+          |----------|--------------|------|
+          | Windows | x64 | \`imagemagick-${VERSION}-windows-x64.tar.gz\` |
+          | Windows | x86 | \`imagemagick-${VERSION}-windows-x86.tar.gz\` |
+          | Linux (glibc) | amd64 | \`imagemagick-${VERSION}-linux-glibc-amd64.tar.gz\` |
+          | Linux (glibc) | arm64 | \`imagemagick-${VERSION}-linux-glibc-arm64.tar.gz\` |
+          | Linux (musl) | amd64 | \`imagemagick-${VERSION}-linux-musl-amd64.tar.gz\` |
+          | Linux (musl) | arm64 | \`imagemagick-${VERSION}-linux-musl-arm64.tar.gz\` |
+          | macOS | arm64 | \`imagemagick-${VERSION}-macos-arm64.tar.gz\` |
+          | macOS | x64 | \`imagemagick-${VERSION}-macos-x64.tar.gz\` |
+
+          ## Supported Formats
+          PNG, JPEG, WEBP, HEIF/HEIC, PDF, TIFF, OpenJPEG (JP2)
+
+          ## Notes
+          - Built with Q16-HDRI quantum depth
+          - Static builds for maximum portability
+          - Minimal bundle size optimized for Node.js binary wrapper use
+          EOF
+
+          # Create new prerelease
+          gh release create bin-main \
+            --prerelease \
+            --title "ImageMagick ${VERSION} Portable Binaries" \
+            --notes-file release_notes.md \
+            artifacts/*.tar.gz \
+            artifacts/*.sha256
+
+  # ============================================================================
+  # FAILURE HANDLER
+  # Cancels the entire workflow if any job fails
+  # ============================================================================
+  cancel-on-failure:
+    name: Cancel on Failure
+    runs-on: ubuntu-24.04
+    if: failure()
+    needs:
+      - windows
+      - linux-glibc
+      - linux-musl
+      - macos
+
+    steps:
+      - name: Cancel workflow run
+        env:
+          GH_TOKEN: ${{ github.token }}
+        run: |
+          echo "A job failed. Cancelling workflow run..."
+          gh api \
+            --method POST \
+            -H "Accept: application/vnd.github+json" \
+            /repos/${{ github.repository }}/actions/runs/${{ github.run_id }}/cancel

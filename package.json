@@ -1,0 +1,79 @@
+{
+  "name": "imagemagick-nodejs",
+  "version": "1.0.0",
+  "description": "A comprehensive Node.js wrapper for ImageMagick CLI",
+  "author": {
+    "name": "Rashed Iqbal",
+    "email": "dev.rashediqbal@gmail.com",
+    "url": "https://rashediqbal.me"
+  },
+  "license": "MIT",
+  "type": "commonjs",
+  "main": "./dist/index.js",
+  "module": "./dist/index.mjs",
+  "types": "./dist/index.d.ts",
+  "exports": {
+    ".": {
+      "import": {
+        "types": "./dist/index.d.mts",
+        "default": "./dist/index.mjs"
+      },
+      "require": {
+        "types": "./dist/index.d.ts",
+        "default": "./dist/index.js"
+      }
+    }
+  },
+  "files": [
+    "dist"
+  ],
+  "engines": {
+    "node": ">=18.0.0"
+  },
+  "scripts": {
+    "build": "tsup",
+    "dev": "tsup --watch",
+    "lint": "eslint src/",
+    "lint:fix": "eslint src/ --fix",
+    "format": "prettier --write \"src/**/*.ts\"",
+    "format:check": "prettier --check \"src/**/*.ts\"",
+    "typecheck": "tsc --noEmit",
+    "test": "vitest",
+    "test:run": "vitest run",
+    "postinstall": "node dist/install.js",
+    "prepublishOnly": "npm run build"
+  },
+  "repository": {
+    "type": "git",
+    "url": "https://github.com/iqbal-rashed/imagemagick-nodejs.git"
+  },
+  "bugs": {
+    "url": "https://github.com/iqbal-rashed/imagemagick-nodejs/issues"
+  },
+  "homepage": "https://github.com/iqbal-rashed/imagemagick-nodejs#readme",
+  "keywords": [
+    "imagemagick",
+    "image",
+    "processing",
+    "convert",
+    "resize",
+    "crop",
+    "transform",
+    "cli",
+    "wrapper"
+  ],
+  "dependencies": {
+    "tar": "^7.0.0"
+  },
+  "devDependencies": {
+    "@eslint/js": "^9.18.0",
+    "@types/node": "^22.10.7",
+    "eslint": "^9.18.0",
+    "eslint-config-prettier": "^10.0.1",
+    "prettier": "^3.4.2",
+    "tsup": "^8.3.5",
+    "typescript": "^5.7.3",
+    "typescript-eslint": "^8.20.0",
+    "vitest": "^3.0.4"
+  }
+}

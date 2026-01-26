@@ -1,0 +1,34 @@
+# Source files
+src/
+tests/
+examples/
+
+# Configuration files
+tsconfig.json
+tsup.config.ts
+vitest.config.ts
+eslint.config.mjs
+.prettierrc
+
+# Development files
+.git/
+.github/
+.claude/
+.vscode/
+.idea/
+*.log
+coverage/
+*.tmp
+*.temp
+.DS_Store
+Thumbs.db
+
+# Documentation (keep README)
+docs/
+
+# Keep these in npm package
+!dist/
+!vendor/
+!README.md
+!LICENSE
+!CHANGELOG.md
