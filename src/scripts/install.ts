@@ -221,18 +221,6 @@ function downloadFile(url: string, destPath: string): Promise<void> {
  */
 async function extractTarGz(tarPath: string, destDir: string): Promise<void> {
   // Use tar command if available (Unix), otherwise use Node.js tar
-  if (process.platform !== 'win32') {
-    try {
-      execSync(`tar -xzf "${tarPath}" -C "${destDir}" --strip-components=1`, {
-        stdio: 'inherit',
-      });
-      return;
-    } catch {
-      // Fall through to Node.js implementation
-    }
-  }
-
-  // Node.js tar extraction for Windows or fallback
   await tar.extract({
     file: tarPath,
     cwd: destDir,
