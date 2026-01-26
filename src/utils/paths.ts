@@ -17,5 +17,6 @@ function findPackageRoot(startDir: string): string {
 }
 
 export const PACKAGE_ROOT = findPackageRoot(__dirname);
-export const BIN_DIR = path.join(PACKAGE_ROOT, 'bin');
+export const VENDOR_DIR = path.join(PACKAGE_ROOT, 'vendor');
+export const BIN_DIR = path.join(VENDOR_DIR, 'bin');
 export const PACKAGE_JSON_PATH = path.join(PACKAGE_ROOT, 'package.json');

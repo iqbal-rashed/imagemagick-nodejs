@@ -14,6 +14,23 @@ name: Build ImageMagick Binaries
 
 on:
   workflow_dispatch:
+    inputs:
+      platform_windows:
+        description: 'Build Windows binaries'
+        type: boolean
+        default: true
+      platform_linux_glibc:
+        description: 'Build Linux glibc binaries'
+        type: boolean
+        default: true
+      platform_linux_musl:
+        description: 'Build Linux musl binaries'
+        type: boolean
+        default: true
+      platform_macos:
+        description: 'Build macOS binaries'
+        type: boolean
+        default: true
 
 concurrency:
   group: ${{ github.workflow }}-${{ github.ref }}
@@ -63,6 +80,7 @@ jobs:
     name: Windows ${{ matrix.arch }}
     runs-on: windows-2025
     needs: version
+    if: github.event.inputs.platform_windows != 'false'
 
     strategy:
       fail-fast: true
@@ -124,7 +142,7 @@ jobs:
         shell: pwsh
         run: |
           echo "=== ImageMagick Version ==="
-          & "Artifacts\bin\magick.exe" -version
+          & "Artifacts\bin\magick.exe" -version | Select-Object -First 10
 
           echo "`n=== Delegates (Format Support) ==="
           & "Artifacts\bin\magick.exe" -version | Select-String -Pattern "Delegates"
@@ -149,20 +167,21 @@ jobs:
         run: |
           $bundleDir = "imagemagick-$env:VERSION-windows-$env:ARCH"
           New-Item -Name $bundleDir -ItemType directory
+          New-Item -Name "$bundleDir\bin" -ItemType directory
 
           # Core executable
-          Copy-Item "Artifacts\bin\magick.exe" $bundleDir
+          Copy-Item "Artifacts\bin\magick.exe" "$bundleDir\bin"
 
           # Required config files
-          Copy-Item "Artifacts\bin\*.xml" $bundleDir
-          Copy-Item "Artifacts\bin\sRGB.icc" $bundleDir
+          Copy-Item "Artifacts\bin\*.xml" "$bundleDir\bin"
+          Copy-Item "Artifacts\bin\sRGB.icc" "$bundleDir\bin"
 
           # License
           Copy-Item "Artifacts\NOTICE.txt" $bundleDir -ErrorAction SilentlyContinue
           Copy-Item "ImageMagick\LICENSE" "$bundleDir\LICENSE.txt" -ErrorAction SilentlyContinue
 
           # Verify build
-          & "$bundleDir\magick.exe" -version
+          & "$bundleDir\bin\magick.exe" -version
 
           # Create tarball
           tar -czvf "$bundleDir.tar.gz" $bundleDir
@@ -191,6 +210,7 @@ jobs:
     name: Linux glibc ${{ matrix.arch }}
     runs-on: ubuntu-24.04
     needs: version
+    if: github.event.inputs.platform_linux_glibc != 'false'
 
     strategy:
       fail-fast: true
@@ -326,6 +346,7 @@ jobs:
     name: Linux musl ${{ matrix.arch }}
     runs-on: ubuntu-24.04
     needs: version
+    if: github.event.inputs.platform_linux_musl != 'false'
 
     strategy:
       fail-fast: true
@@ -439,6 +460,7 @@ jobs:
     name: macOS ${{ matrix.runner == 'macos-15' && 'arm64' || 'x64' }}
     runs-on: ${{ matrix.runner }}
     needs: version
+    if: github.event.inputs.platform_macos != 'false'
 
     strategy:
       fail-fast: true

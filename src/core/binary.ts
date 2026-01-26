@@ -182,31 +182,6 @@ function findInCommonPaths(): string | null {
   return null;
 }
 
-/**
- * Validate that a binary path points to a working ImageMagick installation
- */
-async function validateBinary(binaryPath: string): Promise<boolean> {
-  return new Promise((resolve) => {
-    const proc = spawn(binaryPath, ['-version'], {
-      timeout: 5000,
-      stdio: ['ignore', 'pipe', 'pipe'],
-    });
-
-    let stdout = '';
-
-    proc.stdout.on('data', (data: Buffer) => {
-      stdout += data.toString();
-    });
-
-    proc.on('close', (code) => {
-      resolve(code === 0 && stdout.includes('ImageMagick'));
-    });
-
-    proc.on('error', () => {
-      resolve(false);
-    });
-  });
-}
 
 /**
  * Find the ImageMagick binary
@@ -215,59 +190,38 @@ async function validateBinary(binaryPath: string): Promise<boolean> {
  * @throws BinaryNotFoundError if binary cannot be found
  */
 export async function findBinary(): Promise<string> {
-  // Return cached path if available and still valid
-  if (cachedBinaryPath !== null && fs.existsSync(cachedBinaryPath)) {
+  // Return cached path if available
+  if (cachedBinaryPath) {
     return cachedBinaryPath;
   }
 
-  // Define search strategies in priority order
-  const searchStrategies: Array<() => Promise<string | null>> = [
-    // Custom path (throws if invalid)
-    async () => {
-      if (customBinaryPath !== null) {
-        if (await validateBinary(customBinaryPath)) {
-          return customBinaryPath;
-        }
-        throw new BinaryNotFoundError(customBinaryPath);
-      }
-      return null;
-    },
-    // Vendor-bundled binary
-    async () => {
-      const vendorBinary = getVendorBinaryPath();
-      if (fs.existsSync(vendorBinary) && (await validateBinary(vendorBinary))) {
-        return vendorBinary;
-      }
-      return null;
-    },
-    // PATH environment variable
-    async () => {
-      const pathBinary = findInPath();
-      if (pathBinary !== null && (await validateBinary(pathBinary))) {
-        return pathBinary;
-      }
-      return null;
-    },
-    // Common installation paths
-    async () => {
-      const commonBinary = findInCommonPaths();
-      if (commonBinary !== null && (await validateBinary(commonBinary))) {
-        return commonBinary;
-      }
-      return null;
-    },
-  ];
-
-  // Try each strategy in order
-  for (const strategy of searchStrategies) {
-    const binaryPath = await strategy();
-    if (binaryPath !== null) {
-      cachedBinaryPath = binaryPath;
-      return binaryPath;
-    }
+  // 1. Custom path
+  if (customBinaryPath && fs.existsSync(customBinaryPath)) {
+    cachedBinaryPath = customBinaryPath;
+    return customBinaryPath;
   }
 
-  // No valid binary found
+  // 2. Vendor-bundled binary
+  const vendorBinary = getVendorBinaryPath();
+  if (fs.existsSync(vendorBinary)) {
+    cachedBinaryPath = vendorBinary;
+    return vendorBinary;
+  }
+
+  // 3. PATH environment variable
+  const pathBinary = findInPath();
+  if (pathBinary) {
+    cachedBinaryPath = pathBinary;
+    return pathBinary;
+  }
+
+  // 4. Common installation paths
+  const commonBinary = findInCommonPaths();
+  if (commonBinary) {
+    cachedBinaryPath = commonBinary;
+    return commonBinary;
+  }
+
   throw new BinaryNotFoundError();
 }
 
