@@ -10,7 +10,28 @@ import * as fs from 'fs';
 import * as path from 'path';
 import { execSync } from 'child_process';
 import * as tar from 'tar';
-import { BIN_DIR } from '../utils/paths';
+
+/**
+ * Calculate the package root directory by walking up from __filename
+ * This ensures the install script finds the correct package root regardless of where it's executed from
+ */
+function getPackageRoot(): string {
+  let current = path.dirname(__filename);
+
+  while (current !== path.dirname(current)) {
+    if (fs.existsSync(path.join(current, 'package.json'))) {
+      return current;
+    }
+    current = path.dirname(current);
+  }
+
+  // Fallback to current working directory
+  return process.cwd();
+}
+
+// Calculate BIN_DIR directly in this script to avoid path resolution issues
+const PACKAGE_ROOT = getPackageRoot();
+const BIN_DIR = path.join(PACKAGE_ROOT, 'bin');
 
 // Configuration
 const GITHUB_REPO = 'iqbal-rashed/imagemagick-nodejs';
@@ -246,6 +267,8 @@ function makeExecutable(binaryPath: string): void {
  */
 async function install(): Promise<void> {
   console.log('[imagemagick-nodejs] Installing ImageMagick binary...');
+  console.log(`  Package root: ${PACKAGE_ROOT}`);
+  console.log(`  Binary directory: ${BIN_DIR}`);
 
   // Skip if IMAGEMAGICK_SKIP_DOWNLOAD is set
   if (process.env['IMAGEMAGICK_SKIP_DOWNLOAD']) {
@@ -317,7 +340,8 @@ async function install(): Promise<void> {
 }
 
 // Run installation
-install().catch((err) => {
-  console.error('Installation failed:', err);
-  process.exit(0); // Don't fail npm install
-});
+install()
+  .catch((err) => {
+    console.error('Installation failed:', err);
+  })
+  .finally(() => process.exit(0));
