@@ -409,8 +409,8 @@ jobs:
 
               # Build x265 (for HEIC encoding)
               cd $SRC
-              curl -sL https://bitbucket.org/multicoreware/x265_git/downloads/x265_3.5.tar.gz | tar xz
-              cd x265_3.5/build/linux
+              curl -sL https://github.com/videolan/x265/archive/refs/tags/3.6.tar.gz | tar xz
+              cd x265-3.6/build/linux
               cmake ../../source -DCMAKE_INSTALL_PREFIX=$WORK -DENABLE_SHARED=ON -DENABLE_CLI=OFF
               make -j$(nproc)
               make install
@@ -863,8 +863,8 @@ jobs:
 
               # Build x265 (for HEIC encoding)
               cd $SRC
-              wget -qO- https://bitbucket.org/multicoreware/x265_git/downloads/x265_3.5.tar.gz | tar xz
-              cd x265_3.5/build/linux
+              wget -qO- https://github.com/videolan/x265/archive/refs/tags/3.6.tar.gz | tar xz
+              cd x265-3.6/build/linux
               cmake ../../source -DCMAKE_INSTALL_PREFIX=$WORK -DENABLE_SHARED=ON -DENABLE_CLI=OFF
               make -j$(nproc)
               make install
