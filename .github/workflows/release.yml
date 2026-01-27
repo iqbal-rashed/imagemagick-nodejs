@@ -763,7 +763,7 @@ jobs:
 
               # Build jbigkit (shared) - for JBIG support in TIFF
               cd $SRC
-              wget -qO- https://www.cl.cam.ac.uk/~mgk25/jbigkit/download/jbigkit-2.1.tar.gz | tar xz
+              wget -qO- --user-agent="Mozilla/5.0" https://www.cl.cam.ac.uk/~mgk25/jbigkit/download/jbigkit-2.1.tar.gz | tar xz
               cd jbigkit-2.1
               make -j$(nproc) lib
               cp libjbig/*.h $WORK/include/
