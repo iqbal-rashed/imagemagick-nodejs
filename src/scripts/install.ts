@@ -113,13 +113,21 @@ function validateRedirectUrl(url: string): boolean {
 function fetchJson(url: string): Promise<ReleaseInfo> {
   return new Promise((resolve, reject) => {
     const parsedUrl = new URL(url);
+    const headers: Record<string, string> = {
+      'User-Agent': 'imagemagick-nodejs',
+      Accept: 'application/vnd.github.v3+json',
+    };
+
+    // Use GITHUB_TOKEN if available (avoids rate limiting in CI)
+    const token = process.env.GITHUB_TOKEN;
+    if (token) {
+      headers['Authorization'] = `Bearer ${token}`;
+    }
+
     const options = {
       hostname: parsedUrl.hostname,
       path: parsedUrl.pathname + parsedUrl.search,
-      headers: {
-        'User-Agent': 'imagemagick-nodejs',
-        Accept: 'application/vnd.github.v3+json',
-      },
+      headers,
     };
 
     https

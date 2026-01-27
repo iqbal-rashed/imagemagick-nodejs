@@ -2,7 +2,7 @@
  * Example: Image Composition and Watermarking
  *
  * Demonstrates image compositing, watermarking, and layer operations.
- * 
+ *
  * Note: Text/font operations require system fonts to be available.
  * The portable binary may not have access to fonts on all systems.
  */

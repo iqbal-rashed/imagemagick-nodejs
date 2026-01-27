@@ -39,6 +39,8 @@ jobs:
         run: yarn install --frozen-lockfile
 
       - name: Download Binaries
+        env:
+          GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
         run: npm run download
 
       - name: Run Unit Tests
@@ -83,6 +85,8 @@ jobs:
         run: yarn install --frozen-lockfile
 
       - name: Download Binaries
+        env:
+          GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
         run: npm run download
 
       - name: Run Unit Tests
@@ -127,6 +131,8 @@ jobs:
         run: yarn install --frozen-lockfile
 
       - name: Download Binaries
+        env:
+          GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
         run: npm run download
 
       - name: Run Unit Tests
@@ -171,6 +177,8 @@ jobs:
         run: yarn install --frozen-lockfile
 
       - name: Download Binaries
+        env:
+          GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
         run: npm run download
 
       - name: Run Unit Tests
