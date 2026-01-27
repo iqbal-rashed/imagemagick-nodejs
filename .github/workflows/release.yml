@@ -1144,12 +1144,13 @@ jobs:
         run: |
           brew update
           # Install all image format dependencies (matching Linux/official builds)
+          # Note: webp (not libwebp), jpeg-turbo (not libjpeg-turbo)
           brew install \
             zlib xz zstd bzip2 \
-            libpng jpeg-turbo libtiff libwebp openjpeg \
+            libpng jpeg-turbo libtiff webp openjpeg \
             little-cms2 libxml2 \
             libheif libde265 x265 \
-            libjxl highway brotli \
+            jpeg-xl highway brotli \
             libraw freetype ghostscript \
             autoconf automake libtool pkg-config \
             dylibbundler
