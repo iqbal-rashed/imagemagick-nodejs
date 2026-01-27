@@ -21,24 +21,142 @@ on:
         default: true
 
 jobs:
-  test-examples:
-    name: Test Examples on ${{ matrix.os }}
-    runs-on: ${{ matrix.os }}
-    strategy:
-      fail-fast: false
-      matrix:
-        include:
-          - os: ubuntu-24.04
-            enabled: ${{ github.event.inputs.platform_ubuntu != 'false' }}
-          - os: windows-2025
-            enabled: ${{ github.event.inputs.platform_windows != 'false' }}
-          - os: macos-14
-            enabled: ${{ github.event.inputs.platform_macos_x64 != 'false' }}
-          - os: macos-15
-            enabled: ${{ github.event.inputs.platform_macos_arm64 != 'false' }}
-        exclude:
-          - enabled: false
+  test-ubuntu:
+    name: Test Examples on Ubuntu
+    runs-on: ubuntu-24.04
+    if: github.event.inputs.platform_ubuntu != 'false'
+    steps:
+      - name: Checkout code
+        uses: actions/checkout@v4
 
+      - name: Setup Node.js
+        uses: actions/setup-node@v4
+        with:
+          node-version: "20"
+          cache: "yarn"
+
+      - name: Install dependencies
+        run: yarn install --frozen-lockfile
+
+      - name: Download Binaries
+        run: npm run download
+
+      - name: Run Unit Tests
+        run: npm run test:run
+
+      - name: Run Security Tests
+        run: npm run test:run -- tests/security.test.ts
+
+      - name: Run Integration Tests
+        run: npm run test:run -- tests/integration.test.ts
+
+      - name: Run Basic Example
+        run: npx tsx examples/basic.ts
+
+      - name: Run Batch Example
+        run: npx tsx examples/batch.ts
+
+      - name: Run Security Example
+        run: npx tsx examples/security.ts
+
+      - name: Run Composite Example
+        run: npx tsx examples/composite.ts
+
+      - name: Run Advanced Example
+        run: npx tsx examples/advanced.ts
+
+  test-windows:
+    name: Test Examples on Windows
+    runs-on: windows-2025
+    if: github.event.inputs.platform_windows != 'false'
+    steps:
+      - name: Checkout code
+        uses: actions/checkout@v4
+
+      - name: Setup Node.js
+        uses: actions/setup-node@v4
+        with:
+          node-version: "20"
+          cache: "yarn"
+
+      - name: Install dependencies
+        run: yarn install --frozen-lockfile
+
+      - name: Download Binaries
+        run: npm run download
+
+      - name: Run Unit Tests
+        run: npm run test:run
+
+      - name: Run Security Tests
+        run: npm run test:run -- tests/security.test.ts
+
+      - name: Run Integration Tests
+        run: npm run test:run -- tests/integration.test.ts
+
+      - name: Run Basic Example
+        run: npx tsx examples/basic.ts
+
+      - name: Run Batch Example
+        run: npx tsx examples/batch.ts
+
+      - name: Run Security Example
+        run: npx tsx examples/security.ts
+
+      - name: Run Composite Example
+        run: npx tsx examples/composite.ts
+
+      - name: Run Advanced Example
+        run: npx tsx examples/advanced.ts
+
+  test-macos-x64:
+    name: Test Examples on macOS x64
+    runs-on: macos-14
+    if: github.event.inputs.platform_macos_x64 != 'false'
+    steps:
+      - name: Checkout code
+        uses: actions/checkout@v4
+
+      - name: Setup Node.js
+        uses: actions/setup-node@v4
+        with:
+          node-version: "20"
+          cache: "yarn"
+
+      - name: Install dependencies
+        run: yarn install --frozen-lockfile
+
+      - name: Download Binaries
+        run: npm run download
+
+      - name: Run Unit Tests
+        run: npm run test:run
+
+      - name: Run Security Tests
+        run: npm run test:run -- tests/security.test.ts
+
+      - name: Run Integration Tests
+        run: npm run test:run -- tests/integration.test.ts
+
+      - name: Run Basic Example
+        run: npx tsx examples/basic.ts
+
+      - name: Run Batch Example
+        run: npx tsx examples/batch.ts
+
+      - name: Run Security Example
+        run: npx tsx examples/security.ts
+
+      - name: Run Composite Example
+        run: npx tsx examples/composite.ts
+
+      - name: Run Advanced Example
+        run: npx tsx examples/advanced.ts
+
+  test-macos-arm64:
+    name: Test Examples on macOS arm64
+    runs-on: macos-15
+    if: github.event.inputs.platform_macos_arm64 != 'false'
     steps:
       - name: Checkout code
         uses: actions/checkout@v4
