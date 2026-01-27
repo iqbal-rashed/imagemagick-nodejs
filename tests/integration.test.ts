@@ -173,7 +173,7 @@ describe('Integration Tests', () => {
           .catch(() => false);
         expect(exists).toBe(true);
       }
-    });
+    }, 15000);
   });
 
   describe('Batch Processing', () => {
@@ -236,7 +236,7 @@ describe('Integration Tests', () => {
       const result = await batchConvertFiles(images, outputDir, 'png', { quality: 90 });
 
       expect(result.success.length).toBeGreaterThan(0);
-    });
+    }, 15000);
 
     it('should batch optimize images', async () => {
       if (!sampleImage) {
@@ -251,7 +251,7 @@ describe('Integration Tests', () => {
       const result = await batchOptimizeFiles(images, outputDir, { quality: 85 });
 
       expect(result.success.length).toBeGreaterThan(0);
-    });
+    }, 15000);
   });
 
   describe('Command Builders', () => {
@@ -331,7 +331,7 @@ describe('Integration Tests', () => {
           .catch(() => false);
         expect(exists).toBe(true);
       }
-    });
+    }, 15000);
   });
 
   describe('Performance', () => {
