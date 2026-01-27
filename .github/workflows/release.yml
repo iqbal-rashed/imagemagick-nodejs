@@ -1182,6 +1182,7 @@ jobs:
             --enable-shared \
             --disable-static \
             --disable-docs \
+            --disable-openmp \
             --with-quantum-depth=16 \
             --enable-hdri \
             --without-perl \
