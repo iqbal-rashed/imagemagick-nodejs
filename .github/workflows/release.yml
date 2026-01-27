@@ -435,18 +435,6 @@ jobs:
               # Add license
               cp /workspace/ImageMagick/LICENSE "$BUNDLE_DIR/LICENSE.txt"
               
-              # Create a wrapper script that sets up environment
-              cat > "$BUNDLE_DIR/bin/magick-wrapper.sh" << '\''EOF'\''
-                #!/bin/bash
-                SCRIPT_DIR="$(cd "$(dirname "${BASH_SOURCE[0]}")" && pwd)"
-                MAGICK_HOME="$(dirname "$SCRIPT_DIR")"
-                export MAGICK_HOME
-                export MAGICK_CONFIGURE_PATH="$MAGICK_HOME/etc/ImageMagick-7:$MAGICK_HOME/share/ImageMagick-7"
-                export LD_LIBRARY_PATH="$MAGICK_HOME/lib${LD_LIBRARY_PATH:+:$LD_LIBRARY_PATH}"
-                exec "$SCRIPT_DIR/magick" "$@"
-              EOF
-              chmod +x "$BUNDLE_DIR/bin/magick-wrapper.sh"
-              
               # Create tarball
               cd /workspace
               tar -czvf "${BUNDLE_DIR##*/}.tar.gz" "${BUNDLE_DIR##*/}"
@@ -455,6 +443,13 @@ jobs:
               echo "=== Bundle created ==="
               ls -la "${BUNDLE_DIR##*/}."*
             '
+
+      - name: Verify artifacts exist
+        run: |
+          echo "=== Workspace contents ==="
+          ls -la
+          echo "=== Looking for tarballs ==="
+          ls -la imagemagick-*.tar.gz imagemagick-*.sha256 || echo "No artifacts found!"
 
       - name: Upload artifacts
         uses: actions/upload-artifact@v4
@@ -700,6 +695,13 @@ jobs:
               echo "=== Bundle created ==="
               ls -la "${BUNDLE_DIR##*/}."*
             '
+
+      - name: Verify artifacts exist
+        run: |
+          echo "=== Workspace contents ==="
+          ls -la
+          echo "=== Looking for tarballs ==="
+          ls -la imagemagick-*.tar.gz imagemagick-*.sha256 || echo "No artifacts found!"
 
       - name: Upload artifacts
         uses: actions/upload-artifact@v4
