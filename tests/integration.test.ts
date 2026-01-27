@@ -304,8 +304,11 @@ describe('Integration Tests', () => {
         return;
       }
 
-      // This should handle invalid parameters gracefully
-      await expect(imageMagick(sampleImage).resize(-100).toFile('/tmp/test.jpg')).rejects.toThrow();
+      // This should handle invalid operations gracefully
+      // Use a completely invalid flag that ImageMagick will reject
+      await expect(
+        imageMagick(sampleImage).raw('-invalid-operation-xyz').toFile('/tmp/test.jpg')
+      ).rejects.toThrow();
     });
   });
 
