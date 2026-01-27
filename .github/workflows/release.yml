@@ -1143,11 +1143,14 @@ jobs:
       - name: Install dependencies via Homebrew
         run: |
           brew update
-          # Install only what we need - skip openexr to avoid dyld issues
+          # Install all image format dependencies (matching Linux/official builds)
           brew install \
-            jpeg-turbo libpng webp libheif ghostscript \
-            openjpeg libtiff libxml2 xz \
-            freetype little-cms2 \
+            zlib xz zstd bzip2 \
+            libpng jpeg-turbo libtiff libwebp openjpeg \
+            little-cms2 libxml2 \
+            libheif libde265 x265 \
+            libjxl highway brotli \
+            libraw freetype ghostscript \
             autoconf automake libtool pkg-config \
             dylibbundler
 
@@ -1162,9 +1165,17 @@ jobs:
       - name: Build ImageMagick
         working-directory: ImageMagick
         run: |
-          # Set PKG_CONFIG_PATH for Homebrew dependencies
-          export PKG_CONFIG_PATH="/opt/homebrew/lib/pkgconfig:/usr/local/lib/pkgconfig:$PKG_CONFIG_PATH"
-          
+          # Set PKG_CONFIG_PATH for Homebrew dependencies (arm64 and x64 paths)
+          if [ -d "/opt/homebrew" ]; then
+            export PKG_CONFIG_PATH="/opt/homebrew/lib/pkgconfig:/opt/homebrew/opt/zlib/lib/pkgconfig:/opt/homebrew/opt/bzip2/lib/pkgconfig:$PKG_CONFIG_PATH"
+            export LDFLAGS="-L/opt/homebrew/lib -L/opt/homebrew/opt/zlib/lib -L/opt/homebrew/opt/bzip2/lib"
+            export CPPFLAGS="-I/opt/homebrew/include -I/opt/homebrew/opt/zlib/include -I/opt/homebrew/opt/bzip2/include"
+          else
+            export PKG_CONFIG_PATH="/usr/local/lib/pkgconfig:/usr/local/opt/zlib/lib/pkgconfig:/usr/local/opt/bzip2/lib/pkgconfig:$PKG_CONFIG_PATH"
+            export LDFLAGS="-L/usr/local/lib -L/usr/local/opt/zlib/lib -L/usr/local/opt/bzip2/lib"
+            export CPPFLAGS="-I/usr/local/include -I/usr/local/opt/zlib/include -I/usr/local/opt/bzip2/include"
+          fi
+
           ./configure \
             --prefix=${{ github.workspace }}/install \
             --enable-shared \
@@ -1174,18 +1185,22 @@ jobs:
             --enable-hdri \
             --without-perl \
             --without-magick-plus-plus \
+            --with-bzlib \
+            --with-zlib \
+            --with-zstd \
+            --with-lzma \
             --with-png \
             --with-jpeg \
-            --with-webp \
-            --with-heic \
-            --with-openjp2 \
             --with-tiff \
-            --with-gslib \
-            --with-xml \
+            --with-webp \
+            --with-openjp2 \
+            --with-heic \
+            --with-jxl \
+            --with-raw \
             --with-lcms \
+            --with-xml \
             --with-freetype \
-            --with-zlib \
-            --with-lzma \
+            --with-gslib \
             --without-openexr \
             --without-fontconfig \
             --without-djvu \
@@ -1260,7 +1275,7 @@ jobs:
 
           # Add license
           cp ImageMagick/LICENSE "$BUNDLE_DIR/LICENSE.txt"
-          
+
           # Remove unnecessary files to reduce size
           find "$BUNDLE_DIR" -name "*.a" -delete 2>/dev/null || true
           find "$BUNDLE_DIR" -name "*.la" -delete 2>/dev/null || true
@@ -1268,7 +1283,7 @@ jobs:
           find "$BUNDLE_DIR" -name "cmake" -type d -exec rm -rf {} + 2>/dev/null || true
           find "$BUNDLE_DIR" -name "*.h" -delete 2>/dev/null || true
           find "$BUNDLE_DIR" -name "include" -type d -exec rm -rf {} + 2>/dev/null || true
-          
+
           # Show size before tarball
           echo "=== Bundle size ==="
           du -sh "$BUNDLE_DIR"
