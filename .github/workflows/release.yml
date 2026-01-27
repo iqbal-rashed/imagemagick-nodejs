@@ -204,6 +204,7 @@ jobs:
   # ============================================================================
   # LINUX BUILDS (GLIBC)
   # Ubuntu-based builds for standard glibc systems
+  # Uses shared libraries bundled in tarball (like official AppImage)
   # Uses QEMU for arm64 cross-compilation
   # ============================================================================
   linux-glibc:
@@ -246,107 +247,179 @@ jobs:
               # Install build essentials (following official oss-fuzz approach)
               apt-get install -y \
                 autoconf automake autopoint binutils cmake gettext git gperf g++ \
-                libtool locales make nasm pkg-config curl ca-certificates
+                libtool locales make nasm pkg-config curl ca-certificates patchelf
 
               export WORK=/opt/deps
               export SRC=/tmp/src
-              mkdir -p $WORK $SRC
+              mkdir -p $WORK $SRC $WORK/lib $WORK/include
 
               # ============================================================
-              # Build all dependencies from source as static libraries
-              # Based on ImageMagick official oss-fuzz/build_dependencies.sh
+              # Build all dependencies as SHARED libraries
+              # These will be bundled with the binary (like AppImage approach)
               # ============================================================
 
-              # Build zlib
+              # Build zlib (shared)
               cd $SRC
               curl -sL https://github.com/madler/zlib/releases/download/v1.3.1/zlib-1.3.1.tar.gz | tar xz
               cd zlib-1.3.1
-              CFLAGS="-fPIC" ./configure --prefix=$WORK --static
+              ./configure --prefix=$WORK
               make -j$(nproc)
               make install
 
-              # Build libdeflate
+              # Build libdeflate (shared)
               cd $SRC
               curl -sL https://github.com/ebiggers/libdeflate/archive/refs/tags/v1.19.tar.gz | tar xz
               cd libdeflate-1.19
-              cmake . -DCMAKE_INSTALL_PREFIX=$WORK -DLIBDEFLATE_BUILD_SHARED_LIB=false -DLIBDEFLATE_BUILD_GZIP=false
+              cmake . -DCMAKE_INSTALL_PREFIX=$WORK -DLIBDEFLATE_BUILD_SHARED_LIB=ON -DLIBDEFLATE_BUILD_GZIP=OFF
               make -j$(nproc)
               make install
 
-              # Build xz/lzma
+              # Build xz/lzma (shared)
               cd $SRC
               curl -sL https://github.com/tukaani-project/xz/releases/download/v5.4.5/xz-5.4.5.tar.gz | tar xz
               cd xz-5.4.5
-              ./configure --prefix=$WORK --disable-shared --enable-static --disable-xz --disable-xzdec --disable-lzmadec --disable-lzmainfo --disable-scripts --disable-doc --with-pic
+              ./configure --prefix=$WORK --enable-shared --disable-static --disable-xz --disable-xzdec --disable-lzmadec --disable-lzmainfo --disable-scripts --disable-doc
               make -j$(nproc)
               make install
 
-              # Build zstd
+              # Build zstd (shared)
               cd $SRC
               curl -sL https://github.com/facebook/zstd/releases/download/v1.5.5/zstd-1.5.5.tar.gz | tar xz
               cd zstd-1.5.5
-              CFLAGS="-fPIC" make -j$(nproc) lib-release
+              make -j$(nproc)
               make install PREFIX=$WORK
 
-              # Build libpng
+              # Build libpng (shared)
               cd $SRC
               curl -sL https://github.com/pnggroup/libpng/archive/refs/tags/v1.6.43.tar.gz | tar xz
               cd libpng-1.6.43
-              cmake . -DCMAKE_INSTALL_PREFIX=$WORK -DPNG_SHARED=false -DPNG_STATIC=true -DCMAKE_C_FLAGS="-fPIC" -DZLIB_INCLUDE_DIR=$WORK/include -DZLIB_LIBRARY=$WORK/lib/libz.a
+              cmake . -DCMAKE_INSTALL_PREFIX=$WORK -DPNG_SHARED=ON -DPNG_STATIC=OFF -DZLIB_INCLUDE_DIR=$WORK/include -DZLIB_LIBRARY=$WORK/lib/libz.so
               make -j$(nproc)
               make install
 
-              # Build libjpeg-turbo
+              # Build libjpeg-turbo (shared)
               cd $SRC
               curl -sL https://github.com/libjpeg-turbo/libjpeg-turbo/releases/download/3.0.1/libjpeg-turbo-3.0.1.tar.gz | tar xz
               cd libjpeg-turbo-3.0.1
-              cmake . -DCMAKE_INSTALL_PREFIX=$WORK -DENABLE_STATIC=true -DENABLE_SHARED=false -DCMAKE_C_FLAGS="-fPIC"
+              cmake . -DCMAKE_INSTALL_PREFIX=$WORK -DENABLE_SHARED=ON -DENABLE_STATIC=OFF
               make -j$(nproc)
               make install
 
-              # Build libtiff
+              # Build libtiff (shared)
               cd $SRC
               curl -sL https://download.osgeo.org/libtiff/tiff-4.6.0.tar.gz | tar xz
               cd tiff-4.6.0
-              ./configure --prefix=$WORK --disable-shared --enable-static CFLAGS="-fPIC -I$WORK/include" LDFLAGS="-L$WORK/lib" CPPFLAGS="-I$WORK/include"
+              ./configure --prefix=$WORK --enable-shared --disable-static CFLAGS="-I$WORK/include" LDFLAGS="-L$WORK/lib" CPPFLAGS="-I$WORK/include"
               make -j$(nproc)
               make install
 
-              # Build libwebp (use release tarball that includes configure)
+              # Build libwebp (shared)
               cd $SRC
               curl -sL https://storage.googleapis.com/downloads.webmproject.org/releases/webp/libwebp-1.3.2.tar.gz | tar xz
               cd libwebp-1.3.2
-              ./configure --prefix=$WORK --disable-shared --enable-static --disable-png --disable-jpeg --disable-tiff CFLAGS="-fPIC"
+              ./configure --prefix=$WORK --enable-shared --disable-static --enable-libwebpmux --enable-libwebpdemux
               make -j$(nproc)
               make install
 
-              # Build openjpeg
+              # Build openjpeg (shared)
               cd $SRC
               curl -sL https://github.com/uclouvain/openjpeg/archive/refs/tags/v2.5.0.tar.gz | tar xz
               cd openjpeg-2.5.0
-              cmake . -DCMAKE_INSTALL_PREFIX=$WORK -DBUILD_SHARED_LIBS=false -DBUILD_CODEC=false -DCMAKE_C_FLAGS="-fPIC"
+              cmake . -DCMAKE_INSTALL_PREFIX=$WORK -DBUILD_SHARED_LIBS=ON -DBUILD_CODEC=OFF
               make -j$(nproc)
               make install
 
-              # Build lcms2
+              # Build lcms2 (shared)
               cd $SRC
               curl -sL https://github.com/mm2/Little-CMS/releases/download/lcms2.16/lcms2-2.16.tar.gz | tar xz
               cd lcms2-2.16
-              ./configure --prefix=$WORK --disable-shared --enable-static CFLAGS="-fPIC"
+              ./configure --prefix=$WORK --enable-shared --disable-static
               make -j$(nproc)
               make install
 
-              # Build libxml2 (use GNOME download with configure script)
+              # Build libxml2 (shared)
               cd $SRC
               curl -sL https://download.gnome.org/sources/libxml2/2.12/libxml2-2.12.3.tar.xz | tar xJ
               cd libxml2-2.12.3
-              ./configure --prefix=$WORK --disable-shared --enable-static --without-python --without-icu CFLAGS="-fPIC"
+              ./configure --prefix=$WORK --enable-shared --disable-static --without-python --without-icu
+              make -j$(nproc)
+              make install
+
+              # Build brotli (required for JPEG-XL)
+              cd $SRC
+              curl -sL https://github.com/google/brotli/archive/refs/tags/v1.1.0.tar.gz | tar xz
+              cd brotli-1.1.0
+              cmake . -DCMAKE_INSTALL_PREFIX=$WORK -DBUILD_SHARED_LIBS=ON
+              make -j$(nproc)
+              make install
+
+              # Build highway (required for JPEG-XL)
+              cd $SRC
+              curl -sL https://github.com/google/highway/archive/refs/tags/1.0.7.tar.gz | tar xz
+              cd highway-1.0.7
+              cmake . -DCMAKE_INSTALL_PREFIX=$WORK -DBUILD_SHARED_LIBS=ON -DHWY_ENABLE_TESTS=OFF -DHWY_ENABLE_EXAMPLES=OFF
+              make -j$(nproc)
+              make install
+
+              # Build libjxl (JPEG-XL support)
+              cd $SRC
+              curl -sL https://github.com/libjxl/libjxl/archive/refs/tags/v0.10.2.tar.gz | tar xz
+              cd libjxl-0.10.2
+              cmake . -DCMAKE_INSTALL_PREFIX=$WORK \
+                -DBUILD_SHARED_LIBS=ON \
+                -DBUILD_TESTING=OFF \
+                -DJPEGXL_ENABLE_TOOLS=OFF \
+                -DJPEGXL_ENABLE_DOXYGEN=OFF \
+                -DJPEGXL_ENABLE_MANPAGES=OFF \
+                -DJPEGXL_ENABLE_BENCHMARK=OFF \
+                -DJPEGXL_ENABLE_EXAMPLES=OFF \
+                -DJPEGXL_ENABLE_JNI=OFF \
+                -DJPEGXL_ENABLE_SJPEG=OFF \
+                -DJPEGXL_ENABLE_OPENEXR=OFF \
+                -DJPEGXL_BUNDLE_LIBPNG=OFF \
+                -DCMAKE_PREFIX_PATH=$WORK
+              make -j$(nproc)
+              make install
+
+              # Build libde265 (required for HEIC)
+              cd $SRC
+              curl -sL https://github.com/strukturag/libde265/releases/download/v1.0.15/libde265-1.0.15.tar.gz | tar xz
+              cd libde265-1.0.15
+              ./configure --prefix=$WORK --enable-shared --disable-static --disable-dec265 --disable-sherlock265
+              make -j$(nproc)
+              make install
+
+              # Build x265 (for HEIC encoding)
+              cd $SRC
+              curl -sL https://bitbucket.org/multicoreware/x265_git/downloads/x265_3.5.tar.gz | tar xz
+              cd x265_3.5/build/linux
+              cmake ../../source -DCMAKE_INSTALL_PREFIX=$WORK -DENABLE_SHARED=ON -DENABLE_CLI=OFF
+              make -j$(nproc)
+              make install
+
+              # Build libheif (HEIC/HEIF support)
+              cd $SRC
+              curl -sL https://github.com/strukturag/libheif/releases/download/v1.17.6/libheif-1.17.6.tar.gz | tar xz
+              cd libheif-1.17.6
+              cmake . -DCMAKE_INSTALL_PREFIX=$WORK \
+                -DBUILD_SHARED_LIBS=ON \
+                -DWITH_LIBDE265=ON \
+                -DWITH_X265=ON \
+                -DWITH_EXAMPLES=OFF \
+                -DCMAKE_PREFIX_PATH=$WORK
+              make -j$(nproc)
+              make install
+
+              # Build freetype (for text/fonts)
+              cd $SRC
+              curl -sL https://download.savannah.gnu.org/releases/freetype/freetype-2.13.2.tar.gz | tar xz
+              cd freetype-2.13.2
+              ./configure --prefix=$WORK --enable-shared --disable-static --with-zlib=$WORK --with-png=$WORK
               make -j$(nproc)
               make install
 
               # ============================================================
-              # Build ImageMagick with all static dependencies
-              # Based on ImageMagick official oss-fuzz/build_imagemagick.sh
+              # Build ImageMagick with shared libraries
               # ============================================================
               cd /workspace
               git clone --depth 1 -b main https://github.com/ImageMagick/ImageMagick.git
@@ -355,13 +428,15 @@ jobs:
               autoreconf -fiv
 
               export PKG_CONFIG_PATH="$WORK/lib/pkgconfig:$WORK/lib64/pkgconfig"
+              export LD_LIBRARY_PATH="$WORK/lib:$WORK/lib64"
+              export LDFLAGS="-L$WORK/lib -L$WORK/lib64 -Wl,-rpath,\\\$ORIGIN/../lib"
 
               ./configure \
                 --prefix=/opt/imagemagick \
-                --disable-shared \
-                --enable-static \
+                --enable-shared \
+                --disable-static \
                 --disable-docs \
-                --disable-openmp \
+                --enable-openmp \
                 --with-quantum-depth=16 \
                 --enable-hdri \
                 --without-perl \
@@ -376,11 +451,12 @@ jobs:
                 --with-zlib \
                 --with-zstd \
                 --with-lzma \
-                --without-heic \
+                --with-heic \
+                --with-jxl \
+                --with-freetype \
                 --without-gslib \
                 --without-x \
                 --without-fontconfig \
-                --without-freetype \
                 --without-djvu \
                 --without-fftw \
                 --without-fpx \
@@ -392,10 +468,9 @@ jobs:
                 --without-rsvg \
                 --without-wmf \
                 --without-raw \
-                --without-jxl \
-                CFLAGS="-fPIC -I$WORK/include" \
+                CFLAGS="-I$WORK/include" \
                 CPPFLAGS="-I$WORK/include" \
-                LDFLAGS="-static -L$WORK/lib -L$WORK/lib64" \
+                LDFLAGS="$LDFLAGS" \
                 PKG_CONFIG_PATH="$PKG_CONFIG_PATH"
 
               make -j$(nproc)
@@ -403,38 +478,87 @@ jobs:
 
               # Verify the binary works
               echo "=== ImageMagick Version ==="
-              /opt/imagemagick/bin/magick -version
+              LD_LIBRARY_PATH="/opt/imagemagick/lib:$WORK/lib:$WORK/lib64" /opt/imagemagick/bin/magick -version
 
               # Check dynamic dependencies
               echo "=== Checking dynamic library dependencies ==="
-              ldd /opt/imagemagick/bin/magick 2>&1 || echo "(Static binary)"
+              ldd /opt/imagemagick/bin/magick
 
-              # Smoke test: verify required formats are available
+              # Format support check
               echo "=== Format Support Check ==="
-              for fmt in PNG JPEG WEBP TIFF JP2; do
-                if /opt/imagemagick/bin/magick -list format | grep -qi "^[[:space:]]*$fmt"; then
+              for fmt in PNG JPEG WEBP TIFF JP2 HEIC JXL; do
+                if LD_LIBRARY_PATH="/opt/imagemagick/lib:$WORK/lib:$WORK/lib64" /opt/imagemagick/bin/magick -list format | grep -qi "^[[:space:]]*$fmt"; then
                   echo "✓ $fmt support verified"
                 else
                   echo "✗ WARNING: $fmt support not found"
                 fi
               done
               
-              # Create minimal bundle
+              # ============================================================
+              # Create portable bundle with all shared libraries
+              # ============================================================
               BUNDLE_DIR="/workspace/imagemagick-${VERSION}-linux-glibc-${ARCH}"
               mkdir -p "$BUNDLE_DIR/bin" "$BUNDLE_DIR/lib" "$BUNDLE_DIR/etc/ImageMagick-7" "$BUNDLE_DIR/share/ImageMagick-7"
               
-              # Copy binary
-              cp /opt/imagemagick/bin/magick "$BUNDLE_DIR/bin/"
+              # Copy the magick binary
+              cp /opt/imagemagick/bin/magick "$BUNDLE_DIR/bin/magick.bin"
               
-              # Copy required libraries (for non-fully-static builds)
-              cp -r /opt/imagemagick/lib/ImageMagick-* "$BUNDLE_DIR/lib/" 2>/dev/null || true
+              # Copy ImageMagick libraries
+              cp -P /opt/imagemagick/lib/*.so* "$BUNDLE_DIR/lib/" 2>/dev/null || true
+              cp -rP /opt/imagemagick/lib/ImageMagick-* "$BUNDLE_DIR/lib/" 2>/dev/null || true
               
+              # Copy all dependency shared libraries
+              cp -P $WORK/lib/*.so* "$BUNDLE_DIR/lib/" 2>/dev/null || true
+              cp -P $WORK/lib64/*.so* "$BUNDLE_DIR/lib/" 2>/dev/null || true
+              
+              # Use ldd to find any missing system libraries and copy them
+              echo "=== Copying required system libraries ==="
+              for lib in $(ldd /opt/imagemagick/bin/magick | grep "=> /" | awk "{print \$3}"); do
+                libname=$(basename "$lib")
+                # Skip standard glibc libraries that should always be present
+                case "$libname" in
+                  libc.so*|libm.so*|libpthread.so*|libdl.so*|librt.so*|ld-linux*) 
+                    echo "Skipping system lib: $libname"
+                    ;;
+                  *)
+                    if [ ! -f "$BUNDLE_DIR/lib/$libname" ]; then
+                      echo "Copying: $lib"
+                      cp -P "$lib" "$BUNDLE_DIR/lib/" 2>/dev/null || true
+                      # Also copy any symlink targets
+                      if [ -L "$lib" ]; then
+                        cp -P "$(readlink -f "$lib")" "$BUNDLE_DIR/lib/" 2>/dev/null || true
+                      fi
+                    fi
+                    ;;
+                esac
+              done
+
               # Copy config files
               cp -r /opt/imagemagick/etc/ImageMagick-7/* "$BUNDLE_DIR/etc/ImageMagick-7/" 2>/dev/null || true
               cp -r /opt/imagemagick/share/ImageMagick-7/* "$BUNDLE_DIR/share/ImageMagick-7/" 2>/dev/null || true
               
               # Add license
               cp /workspace/ImageMagick/LICENSE "$BUNDLE_DIR/LICENSE.txt"
+              
+              # Create wrapper script that sets LD_LIBRARY_PATH (using echo to avoid heredoc issues)
+              echo "#!/bin/sh" > "$BUNDLE_DIR/bin/magick"
+              echo "SCRIPT_DIR=\"\$(cd \"\$(dirname \"\$0\")\" && pwd)\"" >> "$BUNDLE_DIR/bin/magick"
+              echo "BUNDLE_DIR=\"\$(cd \"\$SCRIPT_DIR/..\" && pwd)\"" >> "$BUNDLE_DIR/bin/magick"
+              echo "export LD_LIBRARY_PATH=\"\$BUNDLE_DIR/lib:\$LD_LIBRARY_PATH\"" >> "$BUNDLE_DIR/bin/magick"
+              echo "export MAGICK_HOME=\"\$BUNDLE_DIR\"" >> "$BUNDLE_DIR/bin/magick"
+              echo "export MAGICK_CONFIGURE_PATH=\"\$BUNDLE_DIR/etc/ImageMagick-7\"" >> "$BUNDLE_DIR/bin/magick"
+              echo "exec \"\$SCRIPT_DIR/magick.bin\" \"\$@\"" >> "$BUNDLE_DIR/bin/magick"
+              chmod +x "$BUNDLE_DIR/bin/magick"
+              
+              # Test the bundle
+              echo "=== Testing bundle ==="
+              "$BUNDLE_DIR/bin/magick" -version
+              
+              # Show bundle size
+              echo "=== Bundle contents ==="
+              du -sh "$BUNDLE_DIR"
+              du -sh "$BUNDLE_DIR/bin" "$BUNDLE_DIR/lib"
+              ls -la "$BUNDLE_DIR/lib/" | head -30
               
               # Create tarball
               cd /workspace
@@ -463,6 +587,7 @@ jobs:
   # ============================================================================
   # LINUX BUILDS (MUSL)
   # Alpine-based builds for musl libc systems (e.g., Alpine Docker containers)
+  # Uses shared libraries bundled in tarball (like official AppImage)
   # Uses QEMU for arm64 cross-compilation
   # ============================================================================
   linux-musl:
@@ -499,108 +624,182 @@ jobs:
             /bin/sh -c '
               set -ex
 
-              # Install build essentials (xz for .tar.xz extraction)
+              # Install build essentials
               apk add --no-cache \
-                build-base autoconf automake libtool pkgconf git curl wget cmake nasm perl xz
+                build-base autoconf automake libtool pkgconf git curl wget cmake nasm perl xz \
+                patchelf linux-headers
 
               export WORK=/opt/deps
               export SRC=/tmp/src
-              mkdir -p $WORK $SRC
+              mkdir -p $WORK $SRC $WORK/lib $WORK/include
 
               # ============================================================
-              # Build all dependencies from source as static libraries
-              # Based on ImageMagick official oss-fuzz approach
+              # Build all dependencies as SHARED libraries
+              # These will be bundled with the binary (like AppImage approach)
               # ============================================================
 
-              # Build zlib
+              # Build zlib (shared)
               cd $SRC
               wget -qO- https://github.com/madler/zlib/releases/download/v1.3.1/zlib-1.3.1.tar.gz | tar xz
               cd zlib-1.3.1
-              CFLAGS="-fPIC" ./configure --prefix=$WORK --static
+              ./configure --prefix=$WORK
               make -j$(nproc)
               make install
 
-              # Build libdeflate
+              # Build libdeflate (shared)
               cd $SRC
               wget -qO- https://github.com/ebiggers/libdeflate/archive/refs/tags/v1.19.tar.gz | tar xz
               cd libdeflate-1.19
-              cmake . -DCMAKE_INSTALL_PREFIX=$WORK -DLIBDEFLATE_BUILD_SHARED_LIB=false -DLIBDEFLATE_BUILD_GZIP=false
+              cmake . -DCMAKE_INSTALL_PREFIX=$WORK -DLIBDEFLATE_BUILD_SHARED_LIB=ON -DLIBDEFLATE_BUILD_GZIP=OFF
               make -j$(nproc)
               make install
 
-              # Build xz/lzma
+              # Build xz/lzma (shared)
               cd $SRC
               wget -qO- https://github.com/tukaani-project/xz/releases/download/v5.4.5/xz-5.4.5.tar.gz | tar xz
               cd xz-5.4.5
-              ./configure --prefix=$WORK --disable-shared --enable-static --disable-xz --disable-xzdec --disable-lzmadec --disable-lzmainfo --disable-scripts --disable-doc --with-pic
+              ./configure --prefix=$WORK --enable-shared --disable-static --disable-xz --disable-xzdec --disable-lzmadec --disable-lzmainfo --disable-scripts --disable-doc
               make -j$(nproc)
               make install
 
-              # Build zstd
+              # Build zstd (shared)
               cd $SRC
               wget -qO- https://github.com/facebook/zstd/releases/download/v1.5.5/zstd-1.5.5.tar.gz | tar xz
               cd zstd-1.5.5
-              CFLAGS="-fPIC" make -j$(nproc) lib-release
+              make -j$(nproc)
               make install PREFIX=$WORK
 
-              # Build libpng
+              # Build libpng (shared)
               cd $SRC
               wget -qO- https://github.com/pnggroup/libpng/archive/refs/tags/v1.6.43.tar.gz | tar xz
               cd libpng-1.6.43
-              cmake . -DCMAKE_INSTALL_PREFIX=$WORK -DPNG_SHARED=false -DPNG_STATIC=true -DCMAKE_C_FLAGS="-fPIC" -DZLIB_INCLUDE_DIR=$WORK/include -DZLIB_LIBRARY=$WORK/lib/libz.a
+              cmake . -DCMAKE_INSTALL_PREFIX=$WORK -DPNG_SHARED=ON -DPNG_STATIC=OFF -DZLIB_INCLUDE_DIR=$WORK/include -DZLIB_LIBRARY=$WORK/lib/libz.so
               make -j$(nproc)
               make install
 
-              # Build libjpeg-turbo
+              # Build libjpeg-turbo (shared)
               cd $SRC
               wget -qO- https://github.com/libjpeg-turbo/libjpeg-turbo/releases/download/3.0.1/libjpeg-turbo-3.0.1.tar.gz | tar xz
               cd libjpeg-turbo-3.0.1
-              cmake . -DCMAKE_INSTALL_PREFIX=$WORK -DENABLE_STATIC=true -DENABLE_SHARED=false -DCMAKE_C_FLAGS="-fPIC"
+              cmake . -DCMAKE_INSTALL_PREFIX=$WORK -DENABLE_SHARED=ON -DENABLE_STATIC=OFF
               make -j$(nproc)
               make install
 
-              # Build libtiff
+              # Build libtiff (shared)
               cd $SRC
               wget -qO- https://download.osgeo.org/libtiff/tiff-4.6.0.tar.gz | tar xz
               cd tiff-4.6.0
-              ./configure --prefix=$WORK --disable-shared --enable-static CFLAGS="-fPIC -I$WORK/include" LDFLAGS="-L$WORK/lib" CPPFLAGS="-I$WORK/include"
+              ./configure --prefix=$WORK --enable-shared --disable-static CFLAGS="-I$WORK/include" LDFLAGS="-L$WORK/lib" CPPFLAGS="-I$WORK/include"
               make -j$(nproc)
               make install
 
-              # Build libwebp (use release tarball that includes configure)
+              # Build libwebp (shared)
               cd $SRC
               wget -qO- https://storage.googleapis.com/downloads.webmproject.org/releases/webp/libwebp-1.3.2.tar.gz | tar xz
               cd libwebp-1.3.2
-              ./configure --prefix=$WORK --disable-shared --enable-static --disable-png --disable-jpeg --disable-tiff CFLAGS="-fPIC"
+              ./configure --prefix=$WORK --enable-shared --disable-static --enable-libwebpmux --enable-libwebpdemux
               make -j$(nproc)
               make install
 
-              # Build openjpeg
+              # Build openjpeg (shared)
               cd $SRC
               wget -qO- https://github.com/uclouvain/openjpeg/archive/refs/tags/v2.5.0.tar.gz | tar xz
               cd openjpeg-2.5.0
-              cmake . -DCMAKE_INSTALL_PREFIX=$WORK -DBUILD_SHARED_LIBS=false -DBUILD_CODEC=false -DCMAKE_C_FLAGS="-fPIC"
+              cmake . -DCMAKE_INSTALL_PREFIX=$WORK -DBUILD_SHARED_LIBS=ON -DBUILD_CODEC=OFF
               make -j$(nproc)
               make install
 
-              # Build lcms2
+              # Build lcms2 (shared)
               cd $SRC
               wget -qO- https://github.com/mm2/Little-CMS/releases/download/lcms2.16/lcms2-2.16.tar.gz | tar xz
               cd lcms2-2.16
-              ./configure --prefix=$WORK --disable-shared --enable-static CFLAGS="-fPIC"
+              ./configure --prefix=$WORK --enable-shared --disable-static
               make -j$(nproc)
               make install
 
-              # Build libxml2 (use GNOME download with configure script)
+              # Build libxml2 (shared)
               cd $SRC
               wget -qO- https://download.gnome.org/sources/libxml2/2.12/libxml2-2.12.3.tar.xz | tar xJ
               cd libxml2-2.12.3
-              ./configure --prefix=$WORK --disable-shared --enable-static --without-python --without-icu CFLAGS="-fPIC"
+              ./configure --prefix=$WORK --enable-shared --disable-static --without-python --without-icu
+              make -j$(nproc)
+              make install
+
+              # Build brotli (required for JPEG-XL)
+              cd $SRC
+              wget -qO- https://github.com/google/brotli/archive/refs/tags/v1.1.0.tar.gz | tar xz
+              cd brotli-1.1.0
+              cmake . -DCMAKE_INSTALL_PREFIX=$WORK -DBUILD_SHARED_LIBS=ON
+              make -j$(nproc)
+              make install
+
+              # Build highway (required for JPEG-XL)
+              cd $SRC
+              wget -qO- https://github.com/google/highway/archive/refs/tags/1.0.7.tar.gz | tar xz
+              cd highway-1.0.7
+              cmake . -DCMAKE_INSTALL_PREFIX=$WORK -DBUILD_SHARED_LIBS=ON -DHWY_ENABLE_TESTS=OFF -DHWY_ENABLE_EXAMPLES=OFF
+              make -j$(nproc)
+              make install
+
+              # Build libjxl (JPEG-XL support)
+              cd $SRC
+              wget -qO- https://github.com/libjxl/libjxl/archive/refs/tags/v0.10.2.tar.gz | tar xz
+              cd libjxl-0.10.2
+              cmake . -DCMAKE_INSTALL_PREFIX=$WORK \
+                -DBUILD_SHARED_LIBS=ON \
+                -DBUILD_TESTING=OFF \
+                -DJPEGXL_ENABLE_TOOLS=OFF \
+                -DJPEGXL_ENABLE_DOXYGEN=OFF \
+                -DJPEGXL_ENABLE_MANPAGES=OFF \
+                -DJPEGXL_ENABLE_BENCHMARK=OFF \
+                -DJPEGXL_ENABLE_EXAMPLES=OFF \
+                -DJPEGXL_ENABLE_JNI=OFF \
+                -DJPEGXL_ENABLE_SJPEG=OFF \
+                -DJPEGXL_ENABLE_OPENEXR=OFF \
+                -DJPEGXL_BUNDLE_LIBPNG=OFF \
+                -DCMAKE_PREFIX_PATH=$WORK
+              make -j$(nproc)
+              make install
+
+              # Build libde265 (required for HEIC)
+              cd $SRC
+              wget -qO- https://github.com/strukturag/libde265/releases/download/v1.0.15/libde265-1.0.15.tar.gz | tar xz
+              cd libde265-1.0.15
+              ./configure --prefix=$WORK --enable-shared --disable-static --disable-dec265 --disable-sherlock265
+              make -j$(nproc)
+              make install
+
+              # Build x265 (for HEIC encoding)
+              cd $SRC
+              wget -qO- https://bitbucket.org/multicoreware/x265_git/downloads/x265_3.5.tar.gz | tar xz
+              cd x265_3.5/build/linux
+              cmake ../../source -DCMAKE_INSTALL_PREFIX=$WORK -DENABLE_SHARED=ON -DENABLE_CLI=OFF
+              make -j$(nproc)
+              make install
+
+              # Build libheif (HEIC/HEIF support)
+              cd $SRC
+              wget -qO- https://github.com/strukturag/libheif/releases/download/v1.17.6/libheif-1.17.6.tar.gz | tar xz
+              cd libheif-1.17.6
+              cmake . -DCMAKE_INSTALL_PREFIX=$WORK \
+                -DBUILD_SHARED_LIBS=ON \
+                -DWITH_LIBDE265=ON \
+                -DWITH_X265=ON \
+                -DWITH_EXAMPLES=OFF \
+                -DCMAKE_PREFIX_PATH=$WORK
+              make -j$(nproc)
+              make install
+
+              # Build freetype (for text/fonts)
+              cd $SRC
+              wget -qO- https://download.savannah.gnu.org/releases/freetype/freetype-2.13.2.tar.gz | tar xz
+              cd freetype-2.13.2
+              ./configure --prefix=$WORK --enable-shared --disable-static --with-zlib=$WORK --with-png=$WORK
               make -j$(nproc)
               make install
 
               # ============================================================
-              # Build ImageMagick with all static dependencies
+              # Build ImageMagick with shared libraries
               # ============================================================
               cd /workspace
               git clone --depth 1 -b main https://github.com/ImageMagick/ImageMagick.git
@@ -609,11 +808,13 @@ jobs:
               autoreconf -fiv
 
               export PKG_CONFIG_PATH="$WORK/lib/pkgconfig:$WORK/lib64/pkgconfig"
+              export LD_LIBRARY_PATH="$WORK/lib:$WORK/lib64"
+              export LDFLAGS="-L$WORK/lib -L$WORK/lib64 -Wl,-rpath,\\\$ORIGIN/../lib"
 
               ./configure \
                 --prefix=/opt/imagemagick \
-                --disable-shared \
-                --enable-static \
+                --enable-shared \
+                --disable-static \
                 --disable-docs \
                 --disable-openmp \
                 --with-quantum-depth=16 \
@@ -630,11 +831,12 @@ jobs:
                 --with-zlib \
                 --with-zstd \
                 --with-lzma \
-                --without-heic \
+                --with-heic \
+                --with-jxl \
+                --with-freetype \
                 --without-gslib \
                 --without-x \
                 --without-fontconfig \
-                --without-freetype \
                 --without-djvu \
                 --without-fftw \
                 --without-fpx \
@@ -646,48 +848,97 @@ jobs:
                 --without-rsvg \
                 --without-wmf \
                 --without-raw \
-                --without-jxl \
-                CFLAGS="-fPIC -I$WORK/include" \
+                CFLAGS="-I$WORK/include" \
                 CPPFLAGS="-I$WORK/include" \
-                LDFLAGS="-static -L$WORK/lib -L$WORK/lib64" \
+                LDFLAGS="$LDFLAGS" \
                 PKG_CONFIG_PATH="$PKG_CONFIG_PATH"
 
               make -j$(nproc)
               make install
 
-              # Verify the binary works and is static
+              # Verify the binary works
               echo "=== ImageMagick Version ==="
-              /opt/imagemagick/bin/magick -version
+              LD_LIBRARY_PATH="/opt/imagemagick/lib:$WORK/lib:$WORK/lib64" /opt/imagemagick/bin/magick -version
 
+              # Check dynamic dependencies
               echo "=== Checking dynamic library dependencies ==="
-              ldd /opt/imagemagick/bin/magick 2>&1 || echo "(Static binary)"
+              ldd /opt/imagemagick/bin/magick
 
-              # Smoke test: verify required formats
+              # Format support check
               echo "=== Format Support Check ==="
-              for fmt in PNG JPEG WEBP TIFF JP2; do
-                if /opt/imagemagick/bin/magick -list format | grep -qi "^[[:space:]]*$fmt"; then
+              for fmt in PNG JPEG WEBP TIFF JP2 HEIC JXL; do
+                if LD_LIBRARY_PATH="/opt/imagemagick/lib:$WORK/lib:$WORK/lib64" /opt/imagemagick/bin/magick -list format | grep -qi "^[[:space:]]*$fmt"; then
                   echo "✓ $fmt support verified"
                 else
                   echo "✗ WARNING: $fmt support not found"
                 fi
               done
               
-              # Create minimal bundle
+              # ============================================================
+              # Create portable bundle with all shared libraries
+              # ============================================================
               BUNDLE_DIR="/workspace/imagemagick-${VERSION}-linux-musl-${ARCH}"
               mkdir -p "$BUNDLE_DIR/bin" "$BUNDLE_DIR/lib" "$BUNDLE_DIR/etc/ImageMagick-7" "$BUNDLE_DIR/share/ImageMagick-7"
               
-              # Copy binary
-              cp /opt/imagemagick/bin/magick "$BUNDLE_DIR/bin/"
+              # Copy the magick binary
+              cp /opt/imagemagick/bin/magick "$BUNDLE_DIR/bin/magick.bin"
               
-              # Copy required libraries
-              cp -r /opt/imagemagick/lib/ImageMagick-* "$BUNDLE_DIR/lib/" 2>/dev/null || true
+              # Copy ImageMagick libraries
+              cp -P /opt/imagemagick/lib/*.so* "$BUNDLE_DIR/lib/" 2>/dev/null || true
+              cp -rP /opt/imagemagick/lib/ImageMagick-* "$BUNDLE_DIR/lib/" 2>/dev/null || true
               
+              # Copy all dependency shared libraries
+              cp -P $WORK/lib/*.so* "$BUNDLE_DIR/lib/" 2>/dev/null || true
+              cp -P $WORK/lib64/*.so* "$BUNDLE_DIR/lib/" 2>/dev/null || true
+              
+              # Use ldd to find any missing system libraries and copy them
+              echo "=== Copying required system libraries ==="
+              for lib in $(ldd /opt/imagemagick/bin/magick | grep "=> /" | awk "{print \$3}"); do
+                libname=$(basename "$lib")
+                # Skip standard musl libraries
+                case "$libname" in
+                  libc.musl*|ld-musl*) 
+                    echo "Skipping system lib: $libname"
+                    ;;
+                  *)
+                    if [ ! -f "$BUNDLE_DIR/lib/$libname" ]; then
+                      echo "Copying: $lib"
+                      cp -P "$lib" "$BUNDLE_DIR/lib/" 2>/dev/null || true
+                      # Also copy any symlink targets
+                      if [ -L "$lib" ]; then
+                        cp -P "$(readlink -f "$lib")" "$BUNDLE_DIR/lib/" 2>/dev/null || true
+                      fi
+                    fi
+                    ;;
+                esac
+              done
+
               # Copy config files
               cp -r /opt/imagemagick/etc/ImageMagick-7/* "$BUNDLE_DIR/etc/ImageMagick-7/" 2>/dev/null || true
               cp -r /opt/imagemagick/share/ImageMagick-7/* "$BUNDLE_DIR/share/ImageMagick-7/" 2>/dev/null || true
               
               # Add license
               cp /workspace/ImageMagick/LICENSE "$BUNDLE_DIR/LICENSE.txt"
+              
+              # Create wrapper script that sets LD_LIBRARY_PATH (using echo to avoid heredoc issues)
+              echo "#!/bin/sh" > "$BUNDLE_DIR/bin/magick"
+              echo "SCRIPT_DIR=\"\$(cd \"\$(dirname \"\$0\")\" && pwd)\"" >> "$BUNDLE_DIR/bin/magick"
+              echo "BUNDLE_DIR=\"\$(cd \"\$SCRIPT_DIR/..\" && pwd)\"" >> "$BUNDLE_DIR/bin/magick"
+              echo "export LD_LIBRARY_PATH=\"\$BUNDLE_DIR/lib:\$LD_LIBRARY_PATH\"" >> "$BUNDLE_DIR/bin/magick"
+              echo "export MAGICK_HOME=\"\$BUNDLE_DIR\"" >> "$BUNDLE_DIR/bin/magick"
+              echo "export MAGICK_CONFIGURE_PATH=\"\$BUNDLE_DIR/etc/ImageMagick-7\"" >> "$BUNDLE_DIR/bin/magick"
+              echo "exec \"\$SCRIPT_DIR/magick.bin\" \"\$@\"" >> "$BUNDLE_DIR/bin/magick"
+              chmod +x "$BUNDLE_DIR/bin/magick"
+              
+              # Test the bundle
+              echo "=== Testing bundle ==="
+              "$BUNDLE_DIR/bin/magick" -version
+              
+              # Show bundle size
+              echo "=== Bundle contents ==="
+              du -sh "$BUNDLE_DIR"
+              du -sh "$BUNDLE_DIR/bin" "$BUNDLE_DIR/lib"
+              ls -la "$BUNDLE_DIR/lib/" | head -30
               
               # Create tarball
               cd /workspace
