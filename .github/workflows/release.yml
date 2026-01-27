@@ -16,19 +16,19 @@ on:
   workflow_dispatch:
     inputs:
       platform_windows:
-        description: 'Build Windows binaries'
+        description: "Build Windows binaries"
         type: boolean
         default: true
       platform_linux_glibc:
-        description: 'Build Linux glibc binaries'
+        description: "Build Linux glibc binaries"
         type: boolean
         default: true
       platform_linux_musl:
-        description: 'Build Linux musl binaries'
+        description: "Build Linux musl binaries"
         type: boolean
         default: true
       platform_macos:
-        description: 'Build macOS binaries'
+        description: "Build macOS binaries"
         type: boolean
         default: true
 
@@ -246,16 +246,14 @@ jobs:
               # Install build essentials
               apt-get install -y build-essential autoconf automake libtool pkg-config git curl
 
-              # Install static libraries for all dependencies
-              # This ensures the binary is truly static and portable
+              # Install development libraries
+              # Note: We will disable delegates that require complex dynamic linking
               apt-get install -y \
                 libjpeg-turbo8-dev \
                 libpng-dev \
                 libwebp-dev \
-                libheif-dev \
                 libopenjp2-7-dev \
                 libtiff5-dev \
-                ghostscript libgs-dev \
                 libxml2-dev \
                 liblzma-dev \
                 zlib1g-dev \
@@ -266,9 +264,12 @@ jobs:
               git clone --depth 1 -b main https://github.com/ImageMagick/ImageMagick.git
               cd ImageMagick
 
-              # Configure with fully static linking for portability
-              # LDFLAGS="-static" forces all libraries (including delegates) to be linked statically
-              LDFLAGS="-static" \
+              # Configure for a portable build
+              # Disable delegates that have complex dependencies (heic, gs)
+              # These cause dynamic linking issues
+              PKG_CONFIG="pkg-config --static" \
+              CFLAGS="-fPIC" \
+              LDFLAGS="-static -static-libgcc -static-libstdc++" \
               ./configure \
                 --prefix=/opt/imagemagick \
                 --disable-shared \
@@ -280,14 +281,25 @@ jobs:
                 --with-png \
                 --with-jpeg \
                 --with-webp \
-                --with-heic \
+                --without-heic \
                 --with-openjp2 \
                 --with-tiff \
-                --with-gslib \
+                --without-gslib \
                 --with-xml \
                 --without-x \
                 --without-fontconfig \
-                --without-freetype
+                --without-freetype \
+                --without-djvu \
+                --without-fftw \
+                --without-fpx \
+                --without-dps \
+                --without-jbig \
+                --without-lcms \
+                --without-lqr \
+                --without-openexr \
+                --without-pango \
+                --without-rsvg \
+                --without-wmf
 
               make -j$(nproc)
               make install
@@ -383,12 +395,12 @@ jobs:
             /bin/sh -c '
               set -ex
 
-              # Install build essentials
+              # Install build essentials and static libraries
               apk add --no-cache \
                 build-base autoconf automake libtool pkgconf git curl \
-                jpeg-dev libpng-dev libwebp-dev libheif-dev openjpeg-dev \
-                tiff-dev ghostscript-dev libxml2-dev xz-dev zlib-dev \
-                bzip2-dev
+                jpeg-dev libpng-dev libwebp-dev openjpeg-dev \
+                tiff-dev libxml2-dev xz-dev zlib-dev \
+                bzip2-dev zlib-static libpng-static
 
               # Clone ImageMagick
               cd /workspace
@@ -396,8 +408,9 @@ jobs:
               cd ImageMagick
 
               # Configure with fully static linking for portability
-              # LDFLAGS="-static" forces all libraries to be linked statically
+              # Disable problematic delegates that prevent static linking
               LDFLAGS="-static" \
+              CFLAGS="-fPIC" \
               ./configure \
                 --prefix=/opt/imagemagick \
                 --disable-shared \
@@ -409,13 +422,25 @@ jobs:
                 --with-png \
                 --with-jpeg \
                 --with-webp \
-                --with-heic \
+                --without-heic \
                 --with-openjp2 \
                 --with-tiff \
-                --with-gslib \
+                --without-gslib \
                 --with-xml \
                 --without-x \
-                --without-fontconfig
+                --without-fontconfig \
+                --without-freetype \
+                --without-djvu \
+                --without-fftw \
+                --without-fpx \
+                --without-dps \
+                --without-jbig \
+                --without-lcms \
+                --without-lqr \
+                --without-openexr \
+                --without-pango \
+                --without-rsvg \
+                --without-wmf
 
               make -j$(nproc)
               make install
