@@ -174,8 +174,25 @@ function downloadFile(url: string, destPath: string): Promise<void> {
     const file = fs.createWriteStream(destPath);
 
     const request = (downloadUrl: string): void => {
+      const parsedUrl = new URL(downloadUrl);
+      const headers: Record<string, string> = {
+        'User-Agent': 'imagemagick-nodejs',
+      };
+
+      // Use GITHUB_TOKEN if available (avoids rate limiting in CI)
+      const token = process.env.GITHUB_TOKEN;
+      if (token && parsedUrl.hostname.includes('github')) {
+        headers['Authorization'] = `Bearer ${token}`;
+      }
+
+      const options = {
+        hostname: parsedUrl.hostname,
+        path: parsedUrl.pathname + parsedUrl.search,
+        headers,
+      };
+
       https
-        .get(downloadUrl, (res) => {
+        .get(options, (res) => {
           if (res.statusCode === 302 || res.statusCode === 301) {
             const location = res.headers.location;
             if (location) {
