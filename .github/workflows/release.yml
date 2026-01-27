@@ -1127,11 +1127,11 @@ jobs:
     strategy:
       fail-fast: true
       matrix:
-        runner: [macos-15, macos-14]
+        runner: [macos-15, macos-15-intel]
         include:
           - runner: macos-15
             arch: arm64
-          - runner: macos-14
+          - runner: macos-15-intel
             arch: x64
 
     steps:
@@ -1143,9 +1143,11 @@ jobs:
       - name: Install dependencies via Homebrew
         run: |
           brew update
+          # Install only what we need - skip openexr to avoid dyld issues
           brew install \
-            jpeg libpng webp libheif ghostscript \
+            jpeg-turbo libpng webp libheif ghostscript \
             openjpeg libtiff libxml2 xz \
+            freetype little-cms2 \
             autoconf automake libtool pkg-config \
             dylibbundler
 
@@ -1160,8 +1162,14 @@ jobs:
       - name: Build ImageMagick
         working-directory: ImageMagick
         run: |
+          # Set PKG_CONFIG_PATH for Homebrew dependencies
+          export PKG_CONFIG_PATH="/opt/homebrew/lib/pkgconfig:/usr/local/lib/pkgconfig:$PKG_CONFIG_PATH"
+          
           ./configure \
             --prefix=${{ github.workspace }}/install \
+            --enable-shared \
+            --disable-static \
+            --disable-docs \
             --with-quantum-depth=16 \
             --enable-hdri \
             --without-perl \
@@ -1173,7 +1181,22 @@ jobs:
             --with-openjp2 \
             --with-tiff \
             --with-gslib \
-            --with-xml
+            --with-xml \
+            --with-lcms \
+            --with-freetype \
+            --with-zlib \
+            --with-lzma \
+            --without-openexr \
+            --without-fontconfig \
+            --without-djvu \
+            --without-fftw \
+            --without-fpx \
+            --without-dps \
+            --without-lqr \
+            --without-pango \
+            --without-rsvg \
+            --without-wmf \
+            --without-x
 
           make -j$(sysctl -n hw.ncpu)
           make install
@@ -1186,10 +1209,20 @@ jobs:
           mkdir -p "$INSTALL_DIR/lib"
 
           # Use dylibbundler to bundle all dependencies
+          # The -of flag overwrites files, -b fixes linking
           dylibbundler -of -b \
             -x "$INSTALL_DIR/bin/magick" \
             -d "$INSTALL_DIR/lib" \
             -p @executable_path/../lib
+
+          # Fix any duplicate LC_RPATH entries (can cause dyld errors)
+          install_name_tool -delete_rpath @executable_path/../lib "$INSTALL_DIR/bin/magick" 2>/dev/null || true
+          install_name_tool -add_rpath @executable_path/../lib "$INSTALL_DIR/bin/magick" 2>/dev/null || true
+
+          # Strip debug symbols to reduce size
+          echo "=== Stripping debug symbols ==="
+          strip -x "$INSTALL_DIR/bin/magick" 2>/dev/null || true
+          find "$INSTALL_DIR/lib" -name "*.dylib" -exec strip -x {} \; 2>/dev/null || true
 
           # Verify the binary works standalone
           echo "=== Verifying bundled binary ==="
@@ -1227,6 +1260,19 @@ jobs:
 
           # Add license
           cp ImageMagick/LICENSE "$BUNDLE_DIR/LICENSE.txt"
+          
+          # Remove unnecessary files to reduce size
+          find "$BUNDLE_DIR" -name "*.a" -delete 2>/dev/null || true
+          find "$BUNDLE_DIR" -name "*.la" -delete 2>/dev/null || true
+          find "$BUNDLE_DIR" -name "pkgconfig" -type d -exec rm -rf {} + 2>/dev/null || true
+          find "$BUNDLE_DIR" -name "cmake" -type d -exec rm -rf {} + 2>/dev/null || true
+          find "$BUNDLE_DIR" -name "*.h" -delete 2>/dev/null || true
+          find "$BUNDLE_DIR" -name "include" -type d -exec rm -rf {} + 2>/dev/null || true
+          
+          # Show size before tarball
+          echo "=== Bundle size ==="
+          du -sh "$BUNDLE_DIR"
+          du -sh "$BUNDLE_DIR/bin" "$BUNDLE_DIR/lib"
 
           # Create tarball
           tar -czvf "${BUNDLE_DIR}.tar.gz" "$BUNDLE_DIR"
