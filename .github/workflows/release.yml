@@ -1145,15 +1145,14 @@ jobs:
           brew update
           # Install all image format dependencies (matching Linux/official builds)
           # Note: webp (not libwebp), jpeg-turbo (not libjpeg-turbo)
-          # libomp provides OpenMP support for Apple clang
+          # Skip libraw - its pkg-config injects OpenMP flags that Apple clang can't handle
           brew install \
-            libomp \
             zlib xz zstd bzip2 \
             libpng jpeg-turbo libtiff webp openjpeg \
             little-cms2 libxml2 \
             libheif libde265 x265 \
             jpeg-xl highway brotli \
-            libraw freetype ghostscript \
+            freetype ghostscript \
             autoconf automake libtool pkg-config \
             dylibbundler
 
@@ -1169,7 +1168,6 @@ jobs:
         working-directory: ImageMagick
         run: |
           # Set PKG_CONFIG_PATH for Homebrew dependencies (arm64 and x64 paths)
-          # Also set up OpenMP flags for libomp
           if [ -d "/opt/homebrew" ]; then
             BREW_PREFIX="/opt/homebrew"
           else
@@ -1177,21 +1175,15 @@ jobs:
           fi
 
           export PKG_CONFIG_PATH="$BREW_PREFIX/lib/pkgconfig:$BREW_PREFIX/opt/zlib/lib/pkgconfig:$BREW_PREFIX/opt/bzip2/lib/pkgconfig:$PKG_CONFIG_PATH"
-
-          # OpenMP flags for libomp (Apple clang compatible)
-          export CC="clang"
-          export CXX="clang++"
-          export CFLAGS="-Xclang -fopenmp -I$BREW_PREFIX/opt/libomp/include"
-          export CXXFLAGS="-Xclang -fopenmp -I$BREW_PREFIX/opt/libomp/include"
-          export CPPFLAGS="-I$BREW_PREFIX/include -I$BREW_PREFIX/opt/zlib/include -I$BREW_PREFIX/opt/bzip2/include -I$BREW_PREFIX/opt/libomp/include"
-          export LDFLAGS="-L$BREW_PREFIX/lib -L$BREW_PREFIX/opt/zlib/lib -L$BREW_PREFIX/opt/bzip2/lib -L$BREW_PREFIX/opt/libomp/lib -lomp"
+          export CPPFLAGS="-I$BREW_PREFIX/include -I$BREW_PREFIX/opt/zlib/include -I$BREW_PREFIX/opt/bzip2/include"
+          export LDFLAGS="-L$BREW_PREFIX/lib -L$BREW_PREFIX/opt/zlib/lib -L$BREW_PREFIX/opt/bzip2/lib"
 
           ./configure \
             --prefix=${{ github.workspace }}/install \
             --enable-shared \
             --disable-static \
             --disable-docs \
-            --enable-openmp \
+            --disable-openmp \
             --with-quantum-depth=16 \
             --enable-hdri \
             --without-perl \
@@ -1207,7 +1199,7 @@ jobs:
             --with-openjp2 \
             --with-heic \
             --with-jxl \
-            --with-raw \
+            --without-raw \
             --with-lcms \
             --with-xml \
             --with-freetype \
