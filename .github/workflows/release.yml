@@ -255,7 +255,7 @@ jobs:
 
               # ============================================================
               # Build all dependencies as SHARED libraries
-              # These will be bundled with the binary (like AppImage approach)
+              # Matching official ImageMagick AppImage build
               # ============================================================
 
               # Build zlib (shared)
@@ -265,6 +265,15 @@ jobs:
               ./configure --prefix=$WORK
               make -j$(nproc)
               make install
+
+              # Build bzip2 (shared) - required by ImageMagick
+              cd $SRC
+              curl -sL https://sourceware.org/pub/bzip2/bzip2-1.0.8.tar.gz | tar xz
+              cd bzip2-1.0.8
+              make -j$(nproc) -f Makefile-libbz2_so
+              cp -P libbz2.so* $WORK/lib/
+              cp bzlib.h $WORK/include/
+              make install PREFIX=$WORK
 
               # Build libdeflate (shared)
               cd $SRC
@@ -305,11 +314,25 @@ jobs:
               make -j$(nproc)
               make install
 
-              # Build libtiff (shared)
+              # Build jbigkit (shared) - for JBIG support in TIFF
+              cd $SRC
+              curl -sL https://www.cl.cam.ac.uk/~mgk25/jbigkit/download/jbigkit-2.1.tar.gz | tar xz
+              cd jbigkit-2.1
+              make -j$(nproc) lib
+              cp libjbig/*.h $WORK/include/
+              cp libjbig/libjbig.a $WORK/lib/
+              # Build shared library
+              cd libjbig
+              gcc -shared -o libjbig.so.2.1 -Wl,-soname,libjbig.so.2 jbig.o jbig_ar.o
+              cp libjbig.so.2.1 $WORK/lib/
+              ln -sf libjbig.so.2.1 $WORK/lib/libjbig.so.2
+              ln -sf libjbig.so.2 $WORK/lib/libjbig.so
+
+              # Build libtiff (shared) - with JBIG support
               cd $SRC
               curl -sL https://download.osgeo.org/libtiff/tiff-4.6.0.tar.gz | tar xz
               cd tiff-4.6.0
-              ./configure --prefix=$WORK --enable-shared --disable-static CFLAGS="-I$WORK/include" LDFLAGS="-L$WORK/lib" CPPFLAGS="-I$WORK/include"
+              ./configure --prefix=$WORK --enable-shared --disable-static --with-jbig-include-dir=$WORK/include --with-jbig-lib-dir=$WORK/lib CFLAGS="-I$WORK/include" LDFLAGS="-L$WORK/lib" CPPFLAGS="-I$WORK/include"
               make -j$(nproc)
               make install
 
@@ -361,10 +384,10 @@ jobs:
               make -j$(nproc)
               make install
 
-              # Build libjxl (JPEG-XL support)
+              # Build libjxl (JPEG-XL support) - clone with submodules for skcms
               cd $SRC
-              curl -sL https://github.com/libjxl/libjxl/archive/refs/tags/v0.10.2.tar.gz | tar xz
-              cd libjxl-0.10.2
+              git clone --depth 1 --branch v0.10.2 --recursive https://github.com/libjxl/libjxl.git
+              cd libjxl
               cmake . -DCMAKE_INSTALL_PREFIX=$WORK \
                 -DBUILD_SHARED_LIBS=ON \
                 -DBUILD_TESTING=OFF \
@@ -377,6 +400,8 @@ jobs:
                 -DJPEGXL_ENABLE_SJPEG=OFF \
                 -DJPEGXL_ENABLE_OPENEXR=OFF \
                 -DJPEGXL_BUNDLE_LIBPNG=OFF \
+                -DJPEGXL_FORCE_SYSTEM_BROTLI=ON \
+                -DJPEGXL_FORCE_SYSTEM_HWY=ON \
                 -DCMAKE_PREFIX_PATH=$WORK
               make -j$(nproc)
               make install
@@ -414,12 +439,22 @@ jobs:
               cd $SRC
               curl -sL https://download.savannah.gnu.org/releases/freetype/freetype-2.13.2.tar.gz | tar xz
               cd freetype-2.13.2
-              ./configure --prefix=$WORK --enable-shared --disable-static --with-zlib=$WORK --with-png=$WORK
+              ./configure --prefix=$WORK --enable-shared --disable-static --with-zlib=$WORK --with-png=$WORK --with-bzip2=$WORK
+              make -j$(nproc)
+              make install
+
+              # Build LibRaw (for RAW camera formats)
+              cd $SRC
+              curl -sL https://www.libraw.org/data/LibRaw-0.21.2.tar.gz | tar xz
+              cd LibRaw-0.21.2
+              autoreconf -fiv
+              ./configure --prefix=$WORK --enable-shared --disable-static --disable-examples
               make -j$(nproc)
               make install
 
               # ============================================================
               # Build ImageMagick with shared libraries
+              # Matching official ImageMagick AppImage configuration
               # ============================================================
               cd /workspace
               git clone --depth 1 -b main https://github.com/ImageMagick/ImageMagick.git
@@ -441,6 +476,7 @@ jobs:
                 --enable-hdri \
                 --without-perl \
                 --without-magick-plus-plus \
+                --with-bzlib \
                 --with-png \
                 --with-jpeg \
                 --with-webp \
@@ -454,6 +490,8 @@ jobs:
                 --with-heic \
                 --with-jxl \
                 --with-freetype \
+                --with-jbig \
+                --with-raw \
                 --without-gslib \
                 --without-x \
                 --without-fontconfig \
@@ -461,13 +499,11 @@ jobs:
                 --without-fftw \
                 --without-fpx \
                 --without-dps \
-                --without-jbig \
                 --without-lqr \
                 --without-openexr \
                 --without-pango \
                 --without-rsvg \
                 --without-wmf \
-                --without-raw \
                 CFLAGS="-I$WORK/include" \
                 CPPFLAGS="-I$WORK/include" \
                 LDFLAGS="$LDFLAGS" \
@@ -484,9 +520,9 @@ jobs:
               echo "=== Checking dynamic library dependencies ==="
               ldd /opt/imagemagick/bin/magick
 
-              # Format support check
+              # Format support check (matching official AppImage)
               echo "=== Format Support Check ==="
-              for fmt in PNG JPEG WEBP TIFF JP2 HEIC JXL; do
+              for fmt in PNG JPEG WEBP TIFF JP2 HEIC JXL RAW DNG CR2; do
                 if LD_LIBRARY_PATH="/opt/imagemagick/lib:$WORK/lib:$WORK/lib64" /opt/imagemagick/bin/magick -list format | grep -qi "^[[:space:]]*$fmt"; then
                   echo "✓ $fmt support verified"
                 else
@@ -635,7 +671,7 @@ jobs:
 
               # ============================================================
               # Build all dependencies as SHARED libraries
-              # These will be bundled with the binary (like AppImage approach)
+              # Matching official ImageMagick AppImage build
               # ============================================================
 
               # Build zlib (shared)
@@ -645,6 +681,15 @@ jobs:
               ./configure --prefix=$WORK
               make -j$(nproc)
               make install
+
+              # Build bzip2 (shared) - required by ImageMagick
+              cd $SRC
+              wget -qO- https://sourceware.org/pub/bzip2/bzip2-1.0.8.tar.gz | tar xz
+              cd bzip2-1.0.8
+              make -j$(nproc) -f Makefile-libbz2_so
+              cp -P libbz2.so* $WORK/lib/
+              cp bzlib.h $WORK/include/
+              make install PREFIX=$WORK
 
               # Build libdeflate (shared)
               cd $SRC
@@ -685,11 +730,25 @@ jobs:
               make -j$(nproc)
               make install
 
-              # Build libtiff (shared)
+              # Build jbigkit (shared) - for JBIG support in TIFF
+              cd $SRC
+              wget -qO- https://www.cl.cam.ac.uk/~mgk25/jbigkit/download/jbigkit-2.1.tar.gz | tar xz
+              cd jbigkit-2.1
+              make -j$(nproc) lib
+              cp libjbig/*.h $WORK/include/
+              cp libjbig/libjbig.a $WORK/lib/
+              # Build shared library
+              cd libjbig
+              gcc -shared -o libjbig.so.2.1 -Wl,-soname,libjbig.so.2 jbig.o jbig_ar.o
+              cp libjbig.so.2.1 $WORK/lib/
+              ln -sf libjbig.so.2.1 $WORK/lib/libjbig.so.2
+              ln -sf libjbig.so.2 $WORK/lib/libjbig.so
+
+              # Build libtiff (shared) - with JBIG support
               cd $SRC
               wget -qO- https://download.osgeo.org/libtiff/tiff-4.6.0.tar.gz | tar xz
               cd tiff-4.6.0
-              ./configure --prefix=$WORK --enable-shared --disable-static CFLAGS="-I$WORK/include" LDFLAGS="-L$WORK/lib" CPPFLAGS="-I$WORK/include"
+              ./configure --prefix=$WORK --enable-shared --disable-static --with-jbig-include-dir=$WORK/include --with-jbig-lib-dir=$WORK/lib CFLAGS="-I$WORK/include" LDFLAGS="-L$WORK/lib" CPPFLAGS="-I$WORK/include"
               make -j$(nproc)
               make install
 
@@ -741,10 +800,10 @@ jobs:
               make -j$(nproc)
               make install
 
-              # Build libjxl (JPEG-XL support)
+              # Build libjxl (JPEG-XL support) - clone with submodules for skcms
               cd $SRC
-              wget -qO- https://github.com/libjxl/libjxl/archive/refs/tags/v0.10.2.tar.gz | tar xz
-              cd libjxl-0.10.2
+              git clone --depth 1 --branch v0.10.2 --recursive https://github.com/libjxl/libjxl.git
+              cd libjxl
               cmake . -DCMAKE_INSTALL_PREFIX=$WORK \
                 -DBUILD_SHARED_LIBS=ON \
                 -DBUILD_TESTING=OFF \
@@ -757,6 +816,8 @@ jobs:
                 -DJPEGXL_ENABLE_SJPEG=OFF \
                 -DJPEGXL_ENABLE_OPENEXR=OFF \
                 -DJPEGXL_BUNDLE_LIBPNG=OFF \
+                -DJPEGXL_FORCE_SYSTEM_BROTLI=ON \
+                -DJPEGXL_FORCE_SYSTEM_HWY=ON \
                 -DCMAKE_PREFIX_PATH=$WORK
               make -j$(nproc)
               make install
@@ -794,12 +855,23 @@ jobs:
               cd $SRC
               wget -qO- https://download.savannah.gnu.org/releases/freetype/freetype-2.13.2.tar.gz | tar xz
               cd freetype-2.13.2
-              ./configure --prefix=$WORK --enable-shared --disable-static --with-zlib=$WORK --with-png=$WORK
+              ./configure --prefix=$WORK --enable-shared --disable-static --with-zlib=$WORK --with-png=$WORK --with-bzip2=$WORK
+              make -j$(nproc)
+              make install
+
+              # Build LibRaw (for RAW camera formats)
+              cd $SRC
+              wget -qO- https://www.libraw.org/data/LibRaw-0.21.2.tar.gz | tar xz
+              cd LibRaw-0.21.2
+              autoreconf -fiv
+              ./configure --prefix=$WORK --enable-shared --disable-static --disable-examples
               make -j$(nproc)
               make install
 
               # ============================================================
               # Build ImageMagick with shared libraries
+              # Matching official ImageMagick AppImage configuration
+              # Note: OpenMP disabled for musl (not well supported)
               # ============================================================
               cd /workspace
               git clone --depth 1 -b main https://github.com/ImageMagick/ImageMagick.git
@@ -821,6 +893,7 @@ jobs:
                 --enable-hdri \
                 --without-perl \
                 --without-magick-plus-plus \
+                --with-bzlib \
                 --with-png \
                 --with-jpeg \
                 --with-webp \
@@ -834,6 +907,8 @@ jobs:
                 --with-heic \
                 --with-jxl \
                 --with-freetype \
+                --with-jbig \
+                --with-raw \
                 --without-gslib \
                 --without-x \
                 --without-fontconfig \
@@ -841,13 +916,11 @@ jobs:
                 --without-fftw \
                 --without-fpx \
                 --without-dps \
-                --without-jbig \
                 --without-lqr \
                 --without-openexr \
                 --without-pango \
                 --without-rsvg \
                 --without-wmf \
-                --without-raw \
                 CFLAGS="-I$WORK/include" \
                 CPPFLAGS="-I$WORK/include" \
                 LDFLAGS="$LDFLAGS" \
@@ -864,9 +937,9 @@ jobs:
               echo "=== Checking dynamic library dependencies ==="
               ldd /opt/imagemagick/bin/magick
 
-              # Format support check
+              # Format support check (matching official AppImage)
               echo "=== Format Support Check ==="
-              for fmt in PNG JPEG WEBP TIFF JP2 HEIC JXL; do
+              for fmt in PNG JPEG WEBP TIFF JP2 HEIC JXL RAW DNG CR2; do
                 if LD_LIBRARY_PATH="/opt/imagemagick/lib:$WORK/lib:$WORK/lib64" /opt/imagemagick/bin/magick -list format | grep -qi "^[[:space:]]*$fmt"; then
                   echo "✓ $fmt support verified"
                 else
