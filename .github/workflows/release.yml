@@ -576,6 +576,30 @@ jobs:
               # Add license
               cp /workspace/ImageMagick/LICENSE "$BUNDLE_DIR/LICENSE.txt"
               
+              # ============================================================
+              # Strip debug symbols to reduce size (like official AppImage)
+              # ============================================================
+              echo "=== Stripping debug symbols ==="
+              echo "Size before stripping:"
+              du -sh "$BUNDLE_DIR/lib" "$BUNDLE_DIR/bin"
+              
+              # Strip the binary
+              strip --strip-all "$BUNDLE_DIR/bin/magick.bin" 2>/dev/null || true
+              
+              # Strip all shared libraries
+              find "$BUNDLE_DIR/lib" -name "*.so*" -type f -exec strip --strip-unneeded {} \; 2>/dev/null || true
+              
+              # Remove static libraries and other unnecessary files
+              find "$BUNDLE_DIR" -name "*.a" -delete 2>/dev/null || true
+              find "$BUNDLE_DIR" -name "*.la" -delete 2>/dev/null || true
+              find "$BUNDLE_DIR" -name "pkgconfig" -type d -exec rm -rf {} + 2>/dev/null || true
+              find "$BUNDLE_DIR" -name "cmake" -type d -exec rm -rf {} + 2>/dev/null || true
+              find "$BUNDLE_DIR" -name "*.h" -delete 2>/dev/null || true
+              find "$BUNDLE_DIR" -name "include" -type d -exec rm -rf {} + 2>/dev/null || true
+              
+              echo "Size after stripping:"
+              du -sh "$BUNDLE_DIR/lib" "$BUNDLE_DIR/bin"
+              
               # Create wrapper script that sets LD_LIBRARY_PATH (using echo to avoid heredoc issues)
               echo "#!/bin/sh" > "$BUNDLE_DIR/bin/magick"
               echo "SCRIPT_DIR=\"\$(cd \"\$(dirname \"\$0\")\" && pwd)\"" >> "$BUNDLE_DIR/bin/magick"
@@ -992,6 +1016,30 @@ jobs:
               
               # Add license
               cp /workspace/ImageMagick/LICENSE "$BUNDLE_DIR/LICENSE.txt"
+              
+              # ============================================================
+              # Strip debug symbols to reduce size (like official AppImage)
+              # ============================================================
+              echo "=== Stripping debug symbols ==="
+              echo "Size before stripping:"
+              du -sh "$BUNDLE_DIR/lib" "$BUNDLE_DIR/bin"
+              
+              # Strip the binary
+              strip --strip-all "$BUNDLE_DIR/bin/magick.bin" 2>/dev/null || true
+              
+              # Strip all shared libraries
+              find "$BUNDLE_DIR/lib" -name "*.so*" -type f -exec strip --strip-unneeded {} \; 2>/dev/null || true
+              
+              # Remove static libraries and other unnecessary files
+              find "$BUNDLE_DIR" -name "*.a" -delete 2>/dev/null || true
+              find "$BUNDLE_DIR" -name "*.la" -delete 2>/dev/null || true
+              find "$BUNDLE_DIR" -name "pkgconfig" -type d -exec rm -rf {} + 2>/dev/null || true
+              find "$BUNDLE_DIR" -name "cmake" -type d -exec rm -rf {} + 2>/dev/null || true
+              find "$BUNDLE_DIR" -name "*.h" -delete 2>/dev/null || true
+              find "$BUNDLE_DIR" -name "include" -type d -exec rm -rf {} + 2>/dev/null || true
+              
+              echo "Size after stripping:"
+              du -sh "$BUNDLE_DIR/lib" "$BUNDLE_DIR/bin"
               
               # Create wrapper script that sets LD_LIBRARY_PATH (using echo to avoid heredoc issues)
               echo "#!/bin/sh" > "$BUNDLE_DIR/bin/magick"
