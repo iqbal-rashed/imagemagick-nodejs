@@ -257,7 +257,8 @@ jobs:
                 libxml2-dev \
                 liblzma-dev \
                 zlib1g-dev \
-                libbz2-dev
+                libbz2-dev \
+                libzstd-dev
 
               # Clone ImageMagick
               cd /workspace
@@ -400,7 +401,7 @@ jobs:
                 build-base autoconf automake libtool pkgconf git curl \
                 jpeg-dev libpng-dev libwebp-dev openjpeg-dev \
                 tiff-dev libxml2-dev xz-dev zlib-dev \
-                bzip2-dev zlib-static libpng-static
+                bzip2-dev zlib-static libpng-static zstd-dev
 
               # Clone ImageMagick
               cd /workspace
