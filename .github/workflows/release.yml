@@ -430,7 +430,7 @@ jobs:
 
               # Build freetype (for text/fonts)
               cd $SRC
-              curl -sL https://download.savannah.gnu.org/releases/freetype/freetype-2.13.2.tar.gz | tar xz
+              curl -sL https://sourceforge.net/projects/freetype/files/freetype2/2.13.2/freetype-2.13.2.tar.gz/download | tar xz
               cd freetype-2.13.2
               ./configure --prefix=$WORK --enable-shared --disable-static --with-zlib=$WORK --with-png=$WORK --with-bzip2=$WORK
               make -j$(nproc)
@@ -884,7 +884,7 @@ jobs:
 
               # Build freetype (for text/fonts)
               cd $SRC
-              wget -qO- https://download.savannah.gnu.org/releases/freetype/freetype-2.13.2.tar.gz | tar xz
+              wget -qO- https://sourceforge.net/projects/freetype/files/freetype2/2.13.2/freetype-2.13.2.tar.gz/download | tar xz
               cd freetype-2.13.2
               ./configure --prefix=$WORK --enable-shared --disable-static --with-zlib=$WORK --with-png=$WORK --with-bzip2=$WORK
               make -j$(nproc)
