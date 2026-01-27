@@ -245,7 +245,7 @@ jobs:
 
               # Install build essentials (following official oss-fuzz approach)
               apt-get install -y \
-                autoconf automake autopoint binutils cmake gettext git gperf \
+                autoconf automake autopoint binutils cmake gettext git gperf g++ \
                 libtool locales make nasm pkg-config curl ca-certificates
 
               export WORK=/opt/deps
