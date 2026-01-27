@@ -1145,7 +1145,9 @@ jobs:
           brew update
           # Install all image format dependencies (matching Linux/official builds)
           # Note: webp (not libwebp), jpeg-turbo (not libjpeg-turbo)
+          # libomp provides OpenMP support for Apple clang
           brew install \
+            libomp \
             zlib xz zstd bzip2 \
             libpng jpeg-turbo libtiff webp openjpeg \
             little-cms2 libxml2 \
@@ -1167,22 +1169,29 @@ jobs:
         working-directory: ImageMagick
         run: |
           # Set PKG_CONFIG_PATH for Homebrew dependencies (arm64 and x64 paths)
+          # Also set up OpenMP flags for libomp
           if [ -d "/opt/homebrew" ]; then
-            export PKG_CONFIG_PATH="/opt/homebrew/lib/pkgconfig:/opt/homebrew/opt/zlib/lib/pkgconfig:/opt/homebrew/opt/bzip2/lib/pkgconfig:$PKG_CONFIG_PATH"
-            export LDFLAGS="-L/opt/homebrew/lib -L/opt/homebrew/opt/zlib/lib -L/opt/homebrew/opt/bzip2/lib"
-            export CPPFLAGS="-I/opt/homebrew/include -I/opt/homebrew/opt/zlib/include -I/opt/homebrew/opt/bzip2/include"
+            BREW_PREFIX="/opt/homebrew"
           else
-            export PKG_CONFIG_PATH="/usr/local/lib/pkgconfig:/usr/local/opt/zlib/lib/pkgconfig:/usr/local/opt/bzip2/lib/pkgconfig:$PKG_CONFIG_PATH"
-            export LDFLAGS="-L/usr/local/lib -L/usr/local/opt/zlib/lib -L/usr/local/opt/bzip2/lib"
-            export CPPFLAGS="-I/usr/local/include -I/usr/local/opt/zlib/include -I/usr/local/opt/bzip2/include"
+            BREW_PREFIX="/usr/local"
           fi
+
+          export PKG_CONFIG_PATH="$BREW_PREFIX/lib/pkgconfig:$BREW_PREFIX/opt/zlib/lib/pkgconfig:$BREW_PREFIX/opt/bzip2/lib/pkgconfig:$PKG_CONFIG_PATH"
+
+          # OpenMP flags for libomp (Apple clang compatible)
+          export CC="clang"
+          export CXX="clang++"
+          export CFLAGS="-Xclang -fopenmp -I$BREW_PREFIX/opt/libomp/include"
+          export CXXFLAGS="-Xclang -fopenmp -I$BREW_PREFIX/opt/libomp/include"
+          export CPPFLAGS="-I$BREW_PREFIX/include -I$BREW_PREFIX/opt/zlib/include -I$BREW_PREFIX/opt/bzip2/include -I$BREW_PREFIX/opt/libomp/include"
+          export LDFLAGS="-L$BREW_PREFIX/lib -L$BREW_PREFIX/opt/zlib/lib -L$BREW_PREFIX/opt/bzip2/lib -L$BREW_PREFIX/opt/libomp/lib -lomp"
 
           ./configure \
             --prefix=${{ github.workspace }}/install \
             --enable-shared \
             --disable-static \
             --disable-docs \
-            --disable-openmp \
+            --enable-openmp \
             --with-quantum-depth=16 \
             --enable-hdri \
             --without-perl \
