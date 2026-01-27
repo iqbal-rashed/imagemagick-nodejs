@@ -292,7 +292,7 @@ jobs:
               cd $SRC
               curl -sL https://github.com/pnggroup/libpng/archive/refs/tags/v1.6.43.tar.gz | tar xz
               cd libpng-1.6.43
-              cmake . -DCMAKE_INSTALL_PREFIX=$WORK -DPNG_SHARED=false -DPNG_STATIC=true -DCMAKE_C_FLAGS="-fPIC"
+              cmake . -DCMAKE_INSTALL_PREFIX=$WORK -DPNG_SHARED=false -DPNG_STATIC=true -DCMAKE_C_FLAGS="-fPIC" -DZLIB_INCLUDE_DIR=$WORK/include -DZLIB_LIBRARY=$WORK/lib/libz.a
               make -j$(nproc)
               make install
 
@@ -312,11 +312,10 @@ jobs:
               make -j$(nproc)
               make install
 
-              # Build libwebp
+              # Build libwebp (use release tarball that includes configure)
               cd $SRC
-              curl -sL https://github.com/webmproject/libwebp/archive/refs/tags/v1.3.2.tar.gz | tar xz
+              curl -sL https://storage.googleapis.com/downloads.webmproject.org/releases/webp/libwebp-1.3.2.tar.gz | tar xz
               cd libwebp-1.3.2
-              ./autogen.sh
               ./configure --prefix=$WORK --disable-shared --enable-static --disable-png --disable-jpeg --disable-tiff CFLAGS="-fPIC"
               make -j$(nproc)
               make install
@@ -337,11 +336,11 @@ jobs:
               make -j$(nproc)
               make install
 
-              # Build libxml2
+              # Build libxml2 (use GNOME download with configure script)
               cd $SRC
-              curl -sL https://github.com/GNOME/libxml2/archive/refs/tags/v2.12.3.tar.gz | tar xz
+              curl -sL https://download.gnome.org/sources/libxml2/2.12/libxml2-2.12.3.tar.xz | tar xJ
               cd libxml2-2.12.3
-              ./autogen.sh --prefix=$WORK --disable-shared --enable-static --without-python --without-icu CFLAGS="-fPIC"
+              ./configure --prefix=$WORK --disable-shared --enable-static --without-python --without-icu CFLAGS="-fPIC"
               make -j$(nproc)
               make install
 
@@ -395,7 +394,7 @@ jobs:
                 --without-jxl \
                 CFLAGS="-fPIC -I$WORK/include" \
                 CPPFLAGS="-I$WORK/include" \
-                LDFLAGS="-L$WORK/lib -L$WORK/lib64" \
+                LDFLAGS="-static -L$WORK/lib -L$WORK/lib64" \
                 PKG_CONFIG_PATH="$PKG_CONFIG_PATH"
 
               make -j$(nproc)
@@ -407,7 +406,7 @@ jobs:
 
               # Check dynamic dependencies
               echo "=== Checking dynamic library dependencies ==="
-              ldd /opt/imagemagick/bin/magick 2>&1 || echo "(Static binary or check complete)"
+              ldd /opt/imagemagick/bin/magick 2>&1 || echo "(Static binary)"
 
               # Smoke test: verify required formats are available
               echo "=== Format Support Check ==="
@@ -438,14 +437,14 @@ jobs:
               
               # Create a wrapper script that sets up environment
               cat > "$BUNDLE_DIR/bin/magick-wrapper.sh" << '\''EOF'\''
-#!/bin/bash
-SCRIPT_DIR="$(cd "$(dirname "${BASH_SOURCE[0]}")" && pwd)"
-MAGICK_HOME="$(dirname "$SCRIPT_DIR")"
-export MAGICK_HOME
-export MAGICK_CONFIGURE_PATH="$MAGICK_HOME/etc/ImageMagick-7:$MAGICK_HOME/share/ImageMagick-7"
-export LD_LIBRARY_PATH="$MAGICK_HOME/lib${LD_LIBRARY_PATH:+:$LD_LIBRARY_PATH}"
-exec "$SCRIPT_DIR/magick" "$@"
-EOF
+                #!/bin/bash
+                SCRIPT_DIR="$(cd "$(dirname "${BASH_SOURCE[0]}")" && pwd)"
+                MAGICK_HOME="$(dirname "$SCRIPT_DIR")"
+                export MAGICK_HOME
+                export MAGICK_CONFIGURE_PATH="$MAGICK_HOME/etc/ImageMagick-7:$MAGICK_HOME/share/ImageMagick-7"
+                export LD_LIBRARY_PATH="$MAGICK_HOME/lib${LD_LIBRARY_PATH:+:$LD_LIBRARY_PATH}"
+                exec "$SCRIPT_DIR/magick" "$@"
+              EOF
               chmod +x "$BUNDLE_DIR/bin/magick-wrapper.sh"
               
               # Create tarball
@@ -504,9 +503,9 @@ EOF
             /bin/sh -c '
               set -ex
 
-              # Install build essentials
+              # Install build essentials (xz for .tar.xz extraction)
               apk add --no-cache \
-                build-base autoconf automake libtool pkgconf git curl cmake nasm perl
+                build-base autoconf automake libtool pkgconf git curl wget cmake nasm perl xz
 
               export WORK=/opt/deps
               export SRC=/tmp/src
@@ -552,7 +551,7 @@ EOF
               cd $SRC
               wget -qO- https://github.com/pnggroup/libpng/archive/refs/tags/v1.6.43.tar.gz | tar xz
               cd libpng-1.6.43
-              cmake . -DCMAKE_INSTALL_PREFIX=$WORK -DPNG_SHARED=false -DPNG_STATIC=true -DCMAKE_C_FLAGS="-fPIC"
+              cmake . -DCMAKE_INSTALL_PREFIX=$WORK -DPNG_SHARED=false -DPNG_STATIC=true -DCMAKE_C_FLAGS="-fPIC" -DZLIB_INCLUDE_DIR=$WORK/include -DZLIB_LIBRARY=$WORK/lib/libz.a
               make -j$(nproc)
               make install
 
@@ -572,11 +571,10 @@ EOF
               make -j$(nproc)
               make install
 
-              # Build libwebp
+              # Build libwebp (use release tarball that includes configure)
               cd $SRC
-              wget -qO- https://github.com/webmproject/libwebp/archive/refs/tags/v1.3.2.tar.gz | tar xz
+              wget -qO- https://storage.googleapis.com/downloads.webmproject.org/releases/webp/libwebp-1.3.2.tar.gz | tar xz
               cd libwebp-1.3.2
-              ./autogen.sh
               ./configure --prefix=$WORK --disable-shared --enable-static --disable-png --disable-jpeg --disable-tiff CFLAGS="-fPIC"
               make -j$(nproc)
               make install
@@ -597,11 +595,11 @@ EOF
               make -j$(nproc)
               make install
 
-              # Build libxml2
+              # Build libxml2 (use GNOME download with configure script)
               cd $SRC
-              wget -qO- https://github.com/GNOME/libxml2/archive/refs/tags/v2.12.3.tar.gz | tar xz
+              wget -qO- https://download.gnome.org/sources/libxml2/2.12/libxml2-2.12.3.tar.xz | tar xJ
               cd libxml2-2.12.3
-              ./autogen.sh --prefix=$WORK --disable-shared --enable-static --without-python --without-icu CFLAGS="-fPIC"
+              ./configure --prefix=$WORK --disable-shared --enable-static --without-python --without-icu CFLAGS="-fPIC"
               make -j$(nproc)
               make install
 
