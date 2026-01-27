@@ -570,6 +570,27 @@ jobs:
               cp /workspace/ImageMagick/LICENSE "$BUNDLE_DIR/LICENSE.txt"
               
               # ============================================================
+              # Bundle minimal font for text operations (~200KB)
+              # ============================================================
+              echo "=== Bundling font ==="
+              mkdir -p "$BUNDLE_DIR/share/fonts"
+              cd $SRC
+              
+              # Download DejaVu Sans (minimal, permissive license)
+              curl -sL https://github.com/dejavu-fonts/dejavu-fonts/releases/download/version_2_37/dejavu-fonts-ttf-2.37.tar.bz2 | tar xj
+              cp dejavu-fonts-ttf-2.37/ttf/DejaVuSans.ttf "$BUNDLE_DIR/share/fonts/"
+              
+              # Create type.xml to register the font as default (using echo to avoid heredoc)
+              echo "<?xml version=\"1.0\" encoding=\"UTF-8\"?>" > "$BUNDLE_DIR/etc/ImageMagick-7/type.xml"
+              echo "<typemap>" >> "$BUNDLE_DIR/etc/ImageMagick-7/type.xml"
+              echo "  <type name=\"DejaVu-Sans\" fullname=\"DejaVu Sans\" family=\"DejaVu Sans\" style=\"Normal\" stretch=\"Normal\" weight=\"400\" glyphs=\"fonts/DejaVuSans.ttf\"/>" >> "$BUNDLE_DIR/etc/ImageMagick-7/type.xml"
+              echo "  <type name=\"sans-serif\" fullname=\"DejaVu Sans\" family=\"DejaVu Sans\" style=\"Normal\" stretch=\"Normal\" weight=\"400\" glyphs=\"fonts/DejaVuSans.ttf\"/>" >> "$BUNDLE_DIR/etc/ImageMagick-7/type.xml"
+              echo "  <type name=\"Arial\" fullname=\"DejaVu Sans\" family=\"DejaVu Sans\" style=\"Normal\" stretch=\"Normal\" weight=\"400\" glyphs=\"fonts/DejaVuSans.ttf\"/>" >> "$BUNDLE_DIR/etc/ImageMagick-7/type.xml"
+              echo "</typemap>" >> "$BUNDLE_DIR/etc/ImageMagick-7/type.xml"
+              
+              echo "Font bundled: $(ls -lh $BUNDLE_DIR/share/fonts/)"
+              
+              # ============================================================
               # Strip debug symbols to reduce size (like official AppImage)
               # ============================================================
               echo "=== Stripping debug symbols ==="
@@ -1002,6 +1023,27 @@ jobs:
               
               # Add license
               cp /workspace/ImageMagick/LICENSE "$BUNDLE_DIR/LICENSE.txt"
+              
+              # ============================================================
+              # Bundle minimal font for text operations (~200KB)
+              # ============================================================
+              echo "=== Bundling font ==="
+              mkdir -p "$BUNDLE_DIR/share/fonts"
+              cd $SRC
+              
+              # Download DejaVu Sans (minimal, permissive license)
+              wget -qO- https://github.com/dejavu-fonts/dejavu-fonts/releases/download/version_2_37/dejavu-fonts-ttf-2.37.tar.bz2 | tar xj
+              cp dejavu-fonts-ttf-2.37/ttf/DejaVuSans.ttf "$BUNDLE_DIR/share/fonts/"
+              
+              # Create type.xml to register the font as default (using echo to avoid heredoc)
+              echo "<?xml version=\"1.0\" encoding=\"UTF-8\"?>" > "$BUNDLE_DIR/etc/ImageMagick-7/type.xml"
+              echo "<typemap>" >> "$BUNDLE_DIR/etc/ImageMagick-7/type.xml"
+              echo "  <type name=\"DejaVu-Sans\" fullname=\"DejaVu Sans\" family=\"DejaVu Sans\" style=\"Normal\" stretch=\"Normal\" weight=\"400\" glyphs=\"fonts/DejaVuSans.ttf\"/>" >> "$BUNDLE_DIR/etc/ImageMagick-7/type.xml"
+              echo "  <type name=\"sans-serif\" fullname=\"DejaVu Sans\" family=\"DejaVu Sans\" style=\"Normal\" stretch=\"Normal\" weight=\"400\" glyphs=\"fonts/DejaVuSans.ttf\"/>" >> "$BUNDLE_DIR/etc/ImageMagick-7/type.xml"
+              echo "  <type name=\"Arial\" fullname=\"DejaVu Sans\" family=\"DejaVu Sans\" style=\"Normal\" stretch=\"Normal\" weight=\"400\" glyphs=\"fonts/DejaVuSans.ttf\"/>" >> "$BUNDLE_DIR/etc/ImageMagick-7/type.xml"
+              echo "</typemap>" >> "$BUNDLE_DIR/etc/ImageMagick-7/type.xml"
+              
+              echo "Font bundled: $(ls -lh $BUNDLE_DIR/share/fonts/)"
               
               # ============================================================
               # Strip debug symbols to reduce size (like official AppImage)

@@ -2,11 +2,19 @@
  * Example: Image Composition and Watermarking
  *
  * Demonstrates image compositing, watermarking, and layer operations.
+ * 
+ * Note: Text/font operations require system fonts to be available.
+ * The portable binary may not have access to fonts on all systems.
  */
 
 import { imageMagick, overlayImage, addWatermark, blendImages } from '../src/index';
 import * as path from 'path';
 import * as fs from 'fs';
+
+// Helper to check if error is font-related
+function isFontError(error: Error): boolean {
+  return error.message.includes('UnableToReadFont') || error.message.includes('font');
+}
 
 async function main(): Promise<void> {
   console.log('ImageMagick Composition & Watermarking Examples\n');
@@ -22,7 +30,7 @@ async function main(): Promise<void> {
   console.log(`Output directory: ${path.relative(process.cwd(), outputDir)}\n`);
 
   // Example 1: Simple text watermark using annotate
-  console.log('1. Adding Text Watermark');
+  console.log('1. Adding Text Watermark (requires fonts)');
   console.log('-'.repeat(60));
 
   try {
@@ -38,11 +46,15 @@ async function main(): Promise<void> {
 
     console.log('✓ Text watermark added\n');
   } catch (error) {
-    console.log('✗ Failed:', (error as Error).message, '\n');
+    if (isFontError(error as Error)) {
+      console.log('⊘ Skipped: No fonts available (portable binary without fontconfig)\n');
+    } else {
+      console.log('✗ Failed:', (error as Error).message, '\n');
+    }
   }
 
   // Example 2: Watermark with different positions
-  console.log('2. Watermarks with Different Positions');
+  console.log('2. Watermarks with Different Positions (requires fonts)');
   console.log('-'.repeat(60));
 
   const positions: Array<
