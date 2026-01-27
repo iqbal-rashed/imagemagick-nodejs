@@ -115,7 +115,7 @@ jobs:
 
   test-macos-x64:
     name: Test Examples on macOS x64
-    runs-on: macos-14
+    runs-on: macos-15-intel
     if: github.event.inputs.platform_macos_x64 != 'false'
     steps:
       - name: Checkout code
