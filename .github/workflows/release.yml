@@ -409,8 +409,8 @@ jobs:
 
               # Build x265 (for HEIC encoding)
               cd $SRC
-              curl -sL https://github.com/videolan/x265/archive/refs/tags/3.6.tar.gz | tar xz
-              cd x265-3.6/build/linux
+              curl -sL https://github.com/videolan/x265/archive/refs/tags/3.4.tar.gz | tar xz
+              cd x265-3.4/build/linux
               cmake ../../source -DCMAKE_INSTALL_PREFIX=$WORK -DENABLE_SHARED=ON -DENABLE_CLI=OFF
               make -j$(nproc)
               make install
@@ -863,8 +863,8 @@ jobs:
 
               # Build x265 (for HEIC encoding)
               cd $SRC
-              wget -qO- https://github.com/videolan/x265/archive/refs/tags/3.6.tar.gz | tar xz
-              cd x265-3.6/build/linux
+              wget -qO- https://github.com/videolan/x265/archive/refs/tags/3.4.tar.gz | tar xz
+              cd x265-3.4/build/linux
               cmake ../../source -DCMAKE_INSTALL_PREFIX=$WORK -DENABLE_SHARED=ON -DENABLE_CLI=OFF
               make -j$(nproc)
               make install
