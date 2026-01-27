@@ -2,6 +2,23 @@ name: Test Examples
 
 on:
   workflow_dispatch:
+    inputs:
+      platform_ubuntu:
+        description: "Test on Ubuntu"
+        type: boolean
+        default: true
+      platform_windows:
+        description: "Test on Windows"
+        type: boolean
+        default: true
+      platform_macos_x64:
+        description: "Test on macOS x64"
+        type: boolean
+        default: true
+      platform_macos_arm64:
+        description: "Test on macOS arm64"
+        type: boolean
+        default: true
 
 jobs:
   test-examples:
@@ -10,7 +27,17 @@ jobs:
     strategy:
       fail-fast: false
       matrix:
-        os: [ubuntu-24.04, windows-2025, macos-14, macos-15]
+        include:
+          - os: ubuntu-24.04
+            enabled: ${{ github.event.inputs.platform_ubuntu != 'false' }}
+          - os: windows-2025
+            enabled: ${{ github.event.inputs.platform_windows != 'false' }}
+          - os: macos-14
+            enabled: ${{ github.event.inputs.platform_macos_x64 != 'false' }}
+          - os: macos-15
+            enabled: ${{ github.event.inputs.platform_macos_arm64 != 'false' }}
+        exclude:
+          - enabled: false
 
     steps:
       - name: Checkout code
