@@ -411,7 +411,12 @@ jobs:
               cd $SRC
               curl -sL https://github.com/videolan/x265/archive/refs/tags/3.4.tar.gz | tar xz
               cd x265-3.4/build/linux
-              cmake ../../source -DCMAKE_INSTALL_PREFIX=$WORK -DENABLE_SHARED=ON -DENABLE_CLI=OFF
+              # Disable NEON assembly on ARM64 to avoid linking issues
+              if [ "$(uname -m)" = "aarch64" ]; then
+                cmake ../../source -DCMAKE_INSTALL_PREFIX=$WORK -DENABLE_SHARED=ON -DENABLE_CLI=OFF -DENABLE_ASSEMBLY=OFF
+              else
+                cmake ../../source -DCMAKE_INSTALL_PREFIX=$WORK -DENABLE_SHARED=ON -DENABLE_CLI=OFF
+              fi
               make -j$(nproc)
               make install
 
@@ -865,7 +870,12 @@ jobs:
               cd $SRC
               wget -qO- https://github.com/videolan/x265/archive/refs/tags/3.4.tar.gz | tar xz
               cd x265-3.4/build/linux
-              cmake ../../source -DCMAKE_INSTALL_PREFIX=$WORK -DENABLE_SHARED=ON -DENABLE_CLI=OFF
+              # Disable NEON assembly on ARM64 to avoid linking issues with musl
+              if [ "$(uname -m)" = "aarch64" ]; then
+                cmake ../../source -DCMAKE_INSTALL_PREFIX=$WORK -DENABLE_SHARED=ON -DENABLE_CLI=OFF -DENABLE_ASSEMBLY=OFF
+              else
+                cmake ../../source -DCMAKE_INSTALL_PREFIX=$WORK -DENABLE_SHARED=ON -DENABLE_CLI=OFF
+              fi
               make -j$(nproc)
               make install
 
