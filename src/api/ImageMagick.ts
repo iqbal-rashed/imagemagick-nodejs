@@ -21,6 +21,7 @@ export class ImageMagick {
   private inputSource: string | Buffer;
   private operations: string[] = [];
   private execOptions: ExecuteOptions = {};
+  private fontSet: boolean = false;
 
   /**
    * Create a new ImageMagick processor
@@ -493,6 +494,7 @@ export class ImageMagick {
    */
   font(fontName: string): this {
     this.operations.push('-font', fontName);
+    this.fontSet = true;
     return this;
   }
 
@@ -540,6 +542,11 @@ export class ImageMagick {
    * Annotate with text
    */
   annotate(text: string, geometry?: string, angle?: number): this {
+    // Use default font if none specified - DejaVu-Sans is bundled with portable binaries
+    if (!this.fontSet) {
+      this.operations.push('-font', 'DejaVu-Sans');
+      this.fontSet = true;
+    }
     const geo = geometry ?? '+0+0';
     if (angle !== undefined) {
       this.operations.push('-annotate', `${angle}x${angle}${geo}`, text);
@@ -553,6 +560,11 @@ export class ImageMagick {
    * Draw primitive
    */
   draw(command: string): this {
+    // If drawing text, ensure a font is set
+    if (!this.fontSet && /text\s/.test(command)) {
+      this.operations.push('-font', 'DejaVu-Sans');
+      this.fontSet = true;
+    }
     this.operations.push('-draw', command);
     return this;
   }

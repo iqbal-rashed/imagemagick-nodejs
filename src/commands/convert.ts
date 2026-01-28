@@ -41,6 +41,7 @@ export class ConvertArgs {
   private args: string[] = [];
   private inputFiles: string[] = [];
   private outputFile: string = '';
+  private fontSet: boolean = false;
 
   /**
    * Add input file(s)
@@ -617,6 +618,7 @@ export class ConvertArgs {
    */
   font(font: string): this {
     this.args.push('-font', font);
+    this.fontSet = true;
     return this;
   }
 
@@ -656,6 +658,11 @@ export class ConvertArgs {
    * Draw text on the image
    */
   annotate(text: string, geometry?: string, angle?: number): this {
+    // Use default font if none specified - DejaVu-Sans is bundled with portable binaries
+    if (!this.fontSet) {
+      this.args.push('-font', 'DejaVu-Sans');
+      this.fontSet = true;
+    }
     if (angle !== undefined && geometry !== undefined) {
       this.args.push('-annotate', `${angle}x${angle}${geometry}`, text);
     } else if (geometry !== undefined) {
@@ -670,6 +677,11 @@ export class ConvertArgs {
    * Draw primitive shapes
    */
   draw(command: string): this {
+    // If drawing text, ensure a font is set
+    if (!this.fontSet && /text\s/.test(command)) {
+      this.args.push('-font', 'DejaVu-Sans');
+      this.fontSet = true;
+    }
     this.args.push('-draw', command);
     return this;
   }
