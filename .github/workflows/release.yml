@@ -588,9 +588,9 @@ jobs:
               # Create type.xml to register the font as default (using echo to avoid heredoc)
               echo "<?xml version=\"1.0\" encoding=\"UTF-8\"?>" > "$BUNDLE_DIR/etc/ImageMagick-7/type.xml"
               echo "<typemap>" >> "$BUNDLE_DIR/etc/ImageMagick-7/type.xml"
-              echo "  <type name=\"DejaVu-Sans\" fullname=\"DejaVu Sans\" family=\"DejaVu Sans\" style=\"Normal\" stretch=\"Normal\" weight=\"400\" glyphs=\"fonts/DejaVuSans.ttf\"/>" >> "$BUNDLE_DIR/etc/ImageMagick-7/type.xml"
-              echo "  <type name=\"sans-serif\" fullname=\"DejaVu Sans\" family=\"DejaVu Sans\" style=\"Normal\" stretch=\"Normal\" weight=\"400\" glyphs=\"fonts/DejaVuSans.ttf\"/>" >> "$BUNDLE_DIR/etc/ImageMagick-7/type.xml"
-              echo "  <type name=\"Arial\" fullname=\"DejaVu Sans\" family=\"DejaVu Sans\" style=\"Normal\" stretch=\"Normal\" weight=\"400\" glyphs=\"fonts/DejaVuSans.ttf\"/>" >> "$BUNDLE_DIR/etc/ImageMagick-7/type.xml"
+              echo "  <type name=\"DejaVu-Sans\" fullname=\"DejaVu Sans\" family=\"DejaVu Sans\" style=\"Normal\" stretch=\"Normal\" weight=\"400\" glyphs=\"DejaVuSans.ttf\"/>" >> "$BUNDLE_DIR/etc/ImageMagick-7/type.xml"
+              echo "  <type name=\"sans-serif\" fullname=\"DejaVu Sans\" family=\"DejaVu Sans\" style=\"Normal\" stretch=\"Normal\" weight=\"400\" glyphs=\"DejaVuSans.ttf\"/>" >> "$BUNDLE_DIR/etc/ImageMagick-7/type.xml"
+              echo "  <type name=\"Arial\" fullname=\"DejaVu Sans\" family=\"DejaVu Sans\" style=\"Normal\" stretch=\"Normal\" weight=\"400\" glyphs=\"DejaVuSans.ttf\"/>" >> "$BUNDLE_DIR/etc/ImageMagick-7/type.xml"
               echo "</typemap>" >> "$BUNDLE_DIR/etc/ImageMagick-7/type.xml"
               
               echo "Font bundled: $(ls -lh $BUNDLE_DIR/share/fonts/)"
@@ -626,6 +626,7 @@ jobs:
               echo "export LD_LIBRARY_PATH=\"\$BUNDLE_DIR/lib:\$LD_LIBRARY_PATH\"" >> "$BUNDLE_DIR/bin/magick"
               echo "export MAGICK_HOME=\"\$BUNDLE_DIR\"" >> "$BUNDLE_DIR/bin/magick"
               echo "export MAGICK_CONFIGURE_PATH=\"\$BUNDLE_DIR/etc/ImageMagick-7\"" >> "$BUNDLE_DIR/bin/magick"
+              echo "export MAGICK_FONT_PATH=\"\$BUNDLE_DIR/share/fonts\"" >> "$BUNDLE_DIR/bin/magick"
               echo "exec \"\$SCRIPT_DIR/magick.bin\" \"\$@\"" >> "$BUNDLE_DIR/bin/magick"
               chmod +x "$BUNDLE_DIR/bin/magick"
               
@@ -1048,9 +1049,9 @@ jobs:
               # Create type.xml to register the font as default (using echo to avoid heredoc)
               echo "<?xml version=\"1.0\" encoding=\"UTF-8\"?>" > "$BUNDLE_DIR/etc/ImageMagick-7/type.xml"
               echo "<typemap>" >> "$BUNDLE_DIR/etc/ImageMagick-7/type.xml"
-              echo "  <type name=\"DejaVu-Sans\" fullname=\"DejaVu Sans\" family=\"DejaVu Sans\" style=\"Normal\" stretch=\"Normal\" weight=\"400\" glyphs=\"fonts/DejaVuSans.ttf\"/>" >> "$BUNDLE_DIR/etc/ImageMagick-7/type.xml"
-              echo "  <type name=\"sans-serif\" fullname=\"DejaVu Sans\" family=\"DejaVu Sans\" style=\"Normal\" stretch=\"Normal\" weight=\"400\" glyphs=\"fonts/DejaVuSans.ttf\"/>" >> "$BUNDLE_DIR/etc/ImageMagick-7/type.xml"
-              echo "  <type name=\"Arial\" fullname=\"DejaVu Sans\" family=\"DejaVu Sans\" style=\"Normal\" stretch=\"Normal\" weight=\"400\" glyphs=\"fonts/DejaVuSans.ttf\"/>" >> "$BUNDLE_DIR/etc/ImageMagick-7/type.xml"
+              echo "  <type name=\"DejaVu-Sans\" fullname=\"DejaVu Sans\" family=\"DejaVu Sans\" style=\"Normal\" stretch=\"Normal\" weight=\"400\" glyphs=\"DejaVuSans.ttf\"/>" >> "$BUNDLE_DIR/etc/ImageMagick-7/type.xml"
+              echo "  <type name=\"sans-serif\" fullname=\"DejaVu Sans\" family=\"DejaVu Sans\" style=\"Normal\" stretch=\"Normal\" weight=\"400\" glyphs=\"DejaVuSans.ttf\"/>" >> "$BUNDLE_DIR/etc/ImageMagick-7/type.xml"
+              echo "  <type name=\"Arial\" fullname=\"DejaVu Sans\" family=\"DejaVu Sans\" style=\"Normal\" stretch=\"Normal\" weight=\"400\" glyphs=\"DejaVuSans.ttf\"/>" >> "$BUNDLE_DIR/etc/ImageMagick-7/type.xml"
               echo "</typemap>" >> "$BUNDLE_DIR/etc/ImageMagick-7/type.xml"
               
               echo "Font bundled: $(ls -lh $BUNDLE_DIR/share/fonts/)"
@@ -1086,6 +1087,7 @@ jobs:
               echo "export LD_LIBRARY_PATH=\"\$BUNDLE_DIR/lib:\$LD_LIBRARY_PATH\"" >> "$BUNDLE_DIR/bin/magick"
               echo "export MAGICK_HOME=\"\$BUNDLE_DIR\"" >> "$BUNDLE_DIR/bin/magick"
               echo "export MAGICK_CONFIGURE_PATH=\"\$BUNDLE_DIR/etc/ImageMagick-7\"" >> "$BUNDLE_DIR/bin/magick"
+              echo "export MAGICK_FONT_PATH=\"\$BUNDLE_DIR/share/fonts\"" >> "$BUNDLE_DIR/bin/magick"
               echo "exec \"\$SCRIPT_DIR/magick.bin\" \"\$@\"" >> "$BUNDLE_DIR/bin/magick"
               chmod +x "$BUNDLE_DIR/bin/magick"
               
@@ -1288,6 +1290,35 @@ jobs:
 
           # Add license
           cp ImageMagick/LICENSE "$BUNDLE_DIR/LICENSE.txt"
+
+          # Bundle font for text operations
+          echo "=== Bundling font ==="
+          mkdir -p "$BUNDLE_DIR/share/fonts"
+          curl -sL https://github.com/dejavu-fonts/dejavu-fonts/releases/download/version_2_37/dejavu-fonts-ttf-2.37.tar.bz2 | tar xj
+          cp dejavu-fonts-ttf-2.37/ttf/DejaVuSans.ttf "$BUNDLE_DIR/share/fonts/"
+
+          # Create type.xml for font registration
+          mkdir -p "$BUNDLE_DIR/etc/ImageMagick-7"
+          echo '<?xml version="1.0" encoding="UTF-8"?>' > "$BUNDLE_DIR/etc/ImageMagick-7/type.xml"
+          echo '<typemap>' >> "$BUNDLE_DIR/etc/ImageMagick-7/type.xml"
+          echo '  <type name="DejaVu-Sans" fullname="DejaVu Sans" family="DejaVu Sans" style="Normal" stretch="Normal" weight="400" glyphs="DejaVuSans.ttf"/>' >> "$BUNDLE_DIR/etc/ImageMagick-7/type.xml"
+          echo '  <type name="sans-serif" fullname="DejaVu Sans" family="DejaVu Sans" style="Normal" stretch="Normal" weight="400" glyphs="DejaVuSans.ttf"/>' >> "$BUNDLE_DIR/etc/ImageMagick-7/type.xml"
+          echo '  <type name="Arial" fullname="DejaVu Sans" family="DejaVu Sans" style="Normal" stretch="Normal" weight="400" glyphs="DejaVuSans.ttf"/>' >> "$BUNDLE_DIR/etc/ImageMagick-7/type.xml"
+          echo '</typemap>' >> "$BUNDLE_DIR/etc/ImageMagick-7/type.xml"
+
+          # Create wrapper script for macOS
+          mv "$BUNDLE_DIR/bin/magick" "$BUNDLE_DIR/bin/magick.bin"
+          echo '#!/bin/sh' > "$BUNDLE_DIR/bin/magick"
+          echo 'SCRIPT_DIR="$(cd "$(dirname "$0")" && pwd)"' >> "$BUNDLE_DIR/bin/magick"
+          echo 'BUNDLE_DIR="$(cd "$SCRIPT_DIR/.." && pwd)"' >> "$BUNDLE_DIR/bin/magick"
+          echo 'export DYLD_LIBRARY_PATH="$BUNDLE_DIR/lib:$DYLD_LIBRARY_PATH"' >> "$BUNDLE_DIR/bin/magick"
+          echo 'export MAGICK_HOME="$BUNDLE_DIR"' >> "$BUNDLE_DIR/bin/magick"
+          echo 'export MAGICK_CONFIGURE_PATH="$BUNDLE_DIR/etc/ImageMagick-7"' >> "$BUNDLE_DIR/bin/magick"
+          echo 'export MAGICK_FONT_PATH="$BUNDLE_DIR/share/fonts"' >> "$BUNDLE_DIR/bin/magick"
+          echo 'exec "$SCRIPT_DIR/magick.bin" "$@"' >> "$BUNDLE_DIR/bin/magick"
+          chmod +x "$BUNDLE_DIR/bin/magick"
+
+          echo "Font bundled: $(ls -lh $BUNDLE_DIR/share/fonts/)"
 
           # Remove unnecessary files to reduce size
           find "$BUNDLE_DIR" -name "*.a" -delete 2>/dev/null || true
