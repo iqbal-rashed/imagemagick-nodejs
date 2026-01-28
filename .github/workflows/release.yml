@@ -180,6 +180,37 @@ jobs:
           Copy-Item "Artifacts\NOTICE.txt" $bundleDir -ErrorAction SilentlyContinue
           Copy-Item "ImageMagick\LICENSE" "$bundleDir\LICENSE.txt" -ErrorAction SilentlyContinue
 
+          # ============================================================
+          # Bundle minimal font for text operations (~200KB)
+          # ============================================================
+          echo "=== Bundling font ==="
+          New-Item -Name "$bundleDir\share\fonts" -ItemType directory -Force
+
+          # Download DejaVu Sans font
+          $fontUrl = "https://github.com/dejavu-fonts/dejavu-fonts/releases/download/version_2_37/dejavu-fonts-ttf-2.37.zip"
+          Invoke-WebRequest -Uri $fontUrl -OutFile "dejavu-fonts.zip"
+          Expand-Archive -Path "dejavu-fonts.zip" -DestinationPath "dejavu-fonts"
+          Copy-Item "dejavu-fonts\dejavu-fonts-ttf-2.37\ttf\DejaVuSans.ttf" "$bundleDir\share\fonts\"
+
+          # Remove any existing type*.xml files that might have absolute paths
+          echo "=== Removing old type config files ==="
+          Remove-Item "$bundleDir\\bin\\type*.xml" -ErrorAction SilentlyContinue
+
+          # Create type.xml with relative path (relative to bin/ directory)
+          # Note: Windows config XMLs are in bin/ not etc/ImageMagick-7/
+          Set-Content -Path "$bundleDir\\bin\\type.xml" -Value '<?xml version="1.0" encoding="UTF-8"?>'
+          Add-Content -Path "$bundleDir\\bin\\type.xml" -Value '<typemap>'
+          Add-Content -Path "$bundleDir\\bin\\type.xml" -Value '  <type name="DejaVu-Sans" fullname="DejaVu Sans" family="DejaVu Sans" style="Normal" stretch="Normal" weight="400" glyphs="../share/fonts/DejaVuSans.ttf"/>'
+          Add-Content -Path "$bundleDir\\bin\\type.xml" -Value '  <type name="sans-serif" fullname="DejaVu Sans" family="DejaVu Sans" style="Normal" stretch="Normal" weight="400" glyphs="../share/fonts/DejaVuSans.ttf"/>'
+          Add-Content -Path "$bundleDir\\bin\\type.xml" -Value '  <type name="Arial" fullname="DejaVu Sans" family="DejaVu Sans" style="Normal" stretch="Normal" weight="400" glyphs="../share/fonts/DejaVuSans.ttf"/>'
+          Add-Content -Path "$bundleDir\\bin\\type.xml" -Value '  <type name="Helvetica" fullname="DejaVu Sans" family="DejaVu Sans" style="Normal" stretch="Normal" weight="400" glyphs="../share/fonts/DejaVuSans.ttf"/>'
+          Add-Content -Path "$bundleDir\\bin\\type.xml" -Value '</typemap>'
+
+          echo "Font bundled:"
+          Get-ChildItem "$bundleDir\share\fonts"
+          echo "Type config:"
+          Get-ChildItem "$bundleDir\bin\type*.xml"
+
           # Verify build
           & "$bundleDir\bin\magick.exe" -version
 
@@ -585,18 +616,22 @@ jobs:
               curl -sL https://github.com/dejavu-fonts/dejavu-fonts/releases/download/version_2_37/dejavu-fonts-ttf-2.37.tar.bz2 | tar xj
               cp dejavu-fonts-ttf-2.37/ttf/DejaVuSans.ttf "$BUNDLE_DIR/share/fonts/"
               
-              # Create type.xml to register the font as default (using echo to avoid heredoc)
-              # Use absolute path so ImageMagick can find the font regardless of MAGICK_FONT_PATH
-              FONT_PATH="$BUNDLE_DIR/share/fonts/DejaVuSans.ttf"
-              echo "<?xml version=\"1.0\" encoding=\"UTF-8\"?>" > "$BUNDLE_DIR/etc/ImageMagick-7/type.xml"
-              echo "<typemap>" >> "$BUNDLE_DIR/etc/ImageMagick-7/type.xml"
-              echo "  <type name=\"DejaVu-Sans\" fullname=\"DejaVu Sans\" family=\"DejaVu Sans\" style=\"Normal\" stretch=\"Normal\" weight=\"400\" glyphs=\"$FONT_PATH\"/>" >> "$BUNDLE_DIR/etc/ImageMagick-7/type.xml"
-              echo "  <type name=\"sans-serif\" fullname=\"DejaVu Sans\" family=\"DejaVu Sans\" style=\"Normal\" stretch=\"Normal\" weight=\"400\" glyphs=\"$FONT_PATH\"/>" >> "$BUNDLE_DIR/etc/ImageMagick-7/type.xml"
-              echo "  <type name=\"Arial\" fullname=\"DejaVu Sans\" family=\"DejaVu Sans\" style=\"Normal\" stretch=\"Normal\" weight=\"400\" glyphs=\"$FONT_PATH\"/>" >> "$BUNDLE_DIR/etc/ImageMagick-7/type.xml"
-              echo "  <type name=\"Helvetica\" fullname=\"DejaVu Sans\" family=\"DejaVu Sans\" style=\"Normal\" stretch=\"Normal\" weight=\"400\" glyphs=\"$FONT_PATH\"/>" >> "$BUNDLE_DIR/etc/ImageMagick-7/type.xml"
-              echo "</typemap>" >> "$BUNDLE_DIR/etc/ImageMagick-7/type.xml"
+              # Remove any existing type*.xml files that might have absolute paths from build
+              echo "=== Removing old type config files ==="
+              rm -f "$BUNDLE_DIR/etc/ImageMagick-7/type"*.xml
               
-              echo "Font bundled: $(ls -lh $BUNDLE_DIR/share/fonts/)"
+              # Create type.xml with relative paths (relative to etc/ImageMagick-7/)
+              printf '%s\n' '<?xml version="1.0" encoding="UTF-8"?>' '<typemap>' \
+                '  <type name="DejaVu-Sans" fullname="DejaVu Sans" family="DejaVu Sans" style="Normal" stretch="Normal" weight="400" glyphs="../../share/fonts/DejaVuSans.ttf"/>' \
+                '  <type name="sans-serif" fullname="DejaVu Sans" family="DejaVu Sans" style="Normal" stretch="Normal" weight="400" glyphs="../../share/fonts/DejaVuSans.ttf"/>' \
+                '  <type name="Arial" fullname="DejaVu Sans" family="DejaVu Sans" style="Normal" stretch="Normal" weight="400" glyphs="../../share/fonts/DejaVuSans.ttf"/>' \
+                '  <type name="Helvetica" fullname="DejaVu Sans" family="DejaVu Sans" style="Normal" stretch="Normal" weight="400" glyphs="../../share/fonts/DejaVuSans.ttf"/>' \
+                '</typemap>' > "$BUNDLE_DIR/etc/ImageMagick-7/type.xml"
+              
+              echo "Font bundled:"
+              ls -lh "$BUNDLE_DIR/share/fonts/"
+              echo "Type config:"
+              ls -lh "$BUNDLE_DIR/etc/ImageMagick-7/type"*.xml 2>/dev/null || echo "none"
               
               # ============================================================
               # Strip debug symbols to reduce size (like official AppImage)
@@ -629,7 +664,6 @@ jobs:
               echo "export LD_LIBRARY_PATH=\"\$BUNDLE_DIR/lib:\$LD_LIBRARY_PATH\"" >> "$BUNDLE_DIR/bin/magick"
               echo "export MAGICK_HOME=\"\$BUNDLE_DIR\"" >> "$BUNDLE_DIR/bin/magick"
               echo "export MAGICK_CONFIGURE_PATH=\"\$BUNDLE_DIR/etc/ImageMagick-7\"" >> "$BUNDLE_DIR/bin/magick"
-              echo "export MAGICK_FONT_PATH=\"\$BUNDLE_DIR/share/fonts\"" >> "$BUNDLE_DIR/bin/magick"
               echo "exec \"\$SCRIPT_DIR/magick.bin\" \"\$@\"" >> "$BUNDLE_DIR/bin/magick"
               chmod +x "$BUNDLE_DIR/bin/magick"
               
@@ -1049,18 +1083,25 @@ jobs:
               wget -qO- https://github.com/dejavu-fonts/dejavu-fonts/releases/download/version_2_37/dejavu-fonts-ttf-2.37.tar.bz2 | tar xj
               cp dejavu-fonts-ttf-2.37/ttf/DejaVuSans.ttf "$BUNDLE_DIR/share/fonts/"
               
-              # Create type.xml to register the font as default (using echo to avoid heredoc)
-              # Use absolute path so ImageMagick can find the font regardless of MAGICK_FONT_PATH
-              FONT_PATH="$BUNDLE_DIR/share/fonts/DejaVuSans.ttf"
-              echo "<?xml version=\"1.0\" encoding=\"UTF-8\"?>" > "$BUNDLE_DIR/etc/ImageMagick-7/type.xml"
-              echo "<typemap>" >> "$BUNDLE_DIR/etc/ImageMagick-7/type.xml"
-              echo "  <type name=\"DejaVu-Sans\" fullname=\"DejaVu Sans\" family=\"DejaVu Sans\" style=\"Normal\" stretch=\"Normal\" weight=\"400\" glyphs=\"$FONT_PATH\"/>" >> "$BUNDLE_DIR/etc/ImageMagick-7/type.xml"
-              echo "  <type name=\"sans-serif\" fullname=\"DejaVu Sans\" family=\"DejaVu Sans\" style=\"Normal\" stretch=\"Normal\" weight=\"400\" glyphs=\"$FONT_PATH\"/>" >> "$BUNDLE_DIR/etc/ImageMagick-7/type.xml"
-              echo "  <type name=\"Arial\" fullname=\"DejaVu Sans\" family=\"DejaVu Sans\" style=\"Normal\" stretch=\"Normal\" weight=\"400\" glyphs=\"$FONT_PATH\"/>" >> "$BUNDLE_DIR/etc/ImageMagick-7/type.xml"
-              echo "  <type name=\"Helvetica\" fullname=\"DejaVu Sans\" family=\"DejaVu Sans\" style=\"Normal\" stretch=\"Normal\" weight=\"400\" glyphs=\"$FONT_PATH\"/>" >> "$BUNDLE_DIR/etc/ImageMagick-7/type.xml"
-              echo "</typemap>" >> "$BUNDLE_DIR/etc/ImageMagick-7/type.xml"
+              # Remove any existing type*.xml files that might have absolute paths from build
+              echo "=== Removing old type config files ==="
+              rm -f "$BUNDLE_DIR/etc/ImageMagick-7/type"*.xml
               
-              echo "Font bundled: $(ls -lh $BUNDLE_DIR/share/fonts/)"
+              # Create type.xml with relative paths (relative to etc/ImageMagick-7/)
+              printf '%s\n' '<?xml version="1.0" encoding="UTF-8"?>' '<typemap>' \
+                '  <type name="DejaVu-Sans" fullname="DejaVu Sans" family="DejaVu Sans" style="Normal" stretch="Normal" weight="400" glyphs="../../share/fonts/DejaVuSans.ttf"/>' \
+                '  <type name="sans-serif" fullname="DejaVu Sans" family="DejaVu Sans" style="Normal" stretch="Normal" weight="400" glyphs="../../share/fonts/DejaVuSans.ttf"/>' \
+                '  <type name="Arial" fullname="DejaVu Sans" family="DejaVu Sans" style="Normal" stretch="Normal" weight="400" glyphs="../../share/fonts/DejaVuSans.ttf"/>' \
+                '  <type name="Helvetica" fullname="DejaVu Sans" family="DejaVu Sans" style="Normal" stretch="Normal" weight="400" glyphs="../../share/fonts/DejaVuSans.ttf"/>' \
+                '</typemap>' > "$BUNDLE_DIR/etc/ImageMagick-7/type.xml"
+              
+              echo "Font bundled:"
+              ls -lh "$BUNDLE_DIR/share/fonts/"
+              echo "Type config:"
+              ls -lh "$BUNDLE_DIR/etc/ImageMagick-7/type"*.xml 2>/dev/null || echo "none"
+              
+              echo "Font bundled:"
+              ls -lh "$BUNDLE_DIR/share/fonts/"
               
               # ============================================================
               # Strip debug symbols to reduce size (like official AppImage)
@@ -1093,7 +1134,6 @@ jobs:
               echo "export LD_LIBRARY_PATH=\"\$BUNDLE_DIR/lib:\$LD_LIBRARY_PATH\"" >> "$BUNDLE_DIR/bin/magick"
               echo "export MAGICK_HOME=\"\$BUNDLE_DIR\"" >> "$BUNDLE_DIR/bin/magick"
               echo "export MAGICK_CONFIGURE_PATH=\"\$BUNDLE_DIR/etc/ImageMagick-7\"" >> "$BUNDLE_DIR/bin/magick"
-              echo "export MAGICK_FONT_PATH=\"\$BUNDLE_DIR/share/fonts\"" >> "$BUNDLE_DIR/bin/magick"
               echo "exec \"\$SCRIPT_DIR/magick.bin\" \"\$@\"" >> "$BUNDLE_DIR/bin/magick"
               chmod +x "$BUNDLE_DIR/bin/magick"
               
@@ -1303,16 +1343,23 @@ jobs:
           curl -sL https://github.com/dejavu-fonts/dejavu-fonts/releases/download/version_2_37/dejavu-fonts-ttf-2.37.tar.bz2 | tar xj
           cp dejavu-fonts-ttf-2.37/ttf/DejaVuSans.ttf "$BUNDLE_DIR/share/fonts/"
 
-          # Create type.xml for font registration with absolute path
+          # Remove any existing type*.xml files that might have absolute paths from build
+          echo "=== Removing old type config files ==="
           mkdir -p "$BUNDLE_DIR/etc/ImageMagick-7"
-          FONT_PATH="$BUNDLE_DIR/share/fonts/DejaVuSans.ttf"
-          echo '<?xml version="1.0" encoding="UTF-8"?>' > "$BUNDLE_DIR/etc/ImageMagick-7/type.xml"
-          echo '<typemap>' >> "$BUNDLE_DIR/etc/ImageMagick-7/type.xml"
-          echo "  <type name=\"DejaVu-Sans\" fullname=\"DejaVu Sans\" family=\"DejaVu Sans\" style=\"Normal\" stretch=\"Normal\" weight=\"400\" glyphs=\"$FONT_PATH\"/>" >> "$BUNDLE_DIR/etc/ImageMagick-7/type.xml"
-          echo "  <type name=\"sans-serif\" fullname=\"DejaVu Sans\" family=\"DejaVu Sans\" style=\"Normal\" stretch=\"Normal\" weight=\"400\" glyphs=\"$FONT_PATH\"/>" >> "$BUNDLE_DIR/etc/ImageMagick-7/type.xml"
-          echo "  <type name=\"Arial\" fullname=\"DejaVu Sans\" family=\"DejaVu Sans\" style=\"Normal\" stretch=\"Normal\" weight=\"400\" glyphs=\"$FONT_PATH\"/>" >> "$BUNDLE_DIR/etc/ImageMagick-7/type.xml"
-          echo "  <type name=\"Helvetica\" fullname=\"DejaVu Sans\" family=\"DejaVu Sans\" style=\"Normal\" stretch=\"Normal\" weight=\"400\" glyphs=\"$FONT_PATH\"/>" >> "$BUNDLE_DIR/etc/ImageMagick-7/type.xml"
-          echo '</typemap>' >> "$BUNDLE_DIR/etc/ImageMagick-7/type.xml"
+          rm -f "$BUNDLE_DIR/etc/ImageMagick-7/type"*.xml
+
+          # Create type.xml with relative paths (relative to etc/ImageMagick-7/)
+          printf '%s\n' '<?xml version="1.0" encoding="UTF-8"?>' '<typemap>' \
+            '  <type name="DejaVu-Sans" fullname="DejaVu Sans" family="DejaVu Sans" style="Normal" stretch="Normal" weight="400" glyphs="../../share/fonts/DejaVuSans.ttf"/>' \
+            '  <type name="sans-serif" fullname="DejaVu Sans" family="DejaVu Sans" style="Normal" stretch="Normal" weight="400" glyphs="../../share/fonts/DejaVuSans.ttf"/>' \
+            '  <type name="Arial" fullname="DejaVu Sans" family="DejaVu Sans" style="Normal" stretch="Normal" weight="400" glyphs="../../share/fonts/DejaVuSans.ttf"/>' \
+            '  <type name="Helvetica" fullname="DejaVu Sans" family="DejaVu Sans" style="Normal" stretch="Normal" weight="400" glyphs="../../share/fonts/DejaVuSans.ttf"/>' \
+            '</typemap>' > "$BUNDLE_DIR/etc/ImageMagick-7/type.xml"
+
+          echo "Font bundled:"
+          ls -lh "$BUNDLE_DIR/share/fonts/"
+          echo "Type config:"
+          ls -lh "$BUNDLE_DIR/etc/ImageMagick-7/type"*.xml 2>/dev/null || echo "none"
 
           # Create wrapper script for macOS
           mv "$BUNDLE_DIR/bin/magick" "$BUNDLE_DIR/bin/magick.bin"
@@ -1322,11 +1369,8 @@ jobs:
           echo 'export DYLD_LIBRARY_PATH="$BUNDLE_DIR/lib:$DYLD_LIBRARY_PATH"' >> "$BUNDLE_DIR/bin/magick"
           echo 'export MAGICK_HOME="$BUNDLE_DIR"' >> "$BUNDLE_DIR/bin/magick"
           echo 'export MAGICK_CONFIGURE_PATH="$BUNDLE_DIR/etc/ImageMagick-7"' >> "$BUNDLE_DIR/bin/magick"
-          echo 'export MAGICK_FONT_PATH="$BUNDLE_DIR/share/fonts"' >> "$BUNDLE_DIR/bin/magick"
           echo 'exec "$SCRIPT_DIR/magick.bin" "$@"' >> "$BUNDLE_DIR/bin/magick"
           chmod +x "$BUNDLE_DIR/bin/magick"
-
-          echo "Font bundled: $(ls -lh $BUNDLE_DIR/share/fonts/)"
 
           # Remove unnecessary files to reduce size
           find "$BUNDLE_DIR" -name "*.a" -delete 2>/dev/null || true

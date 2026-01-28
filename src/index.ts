@@ -214,10 +214,3 @@ export {
   validateNumber,
   validateString,
 } from './utils/validation';
-
-// ============================================================================
-// Default Export
-// ============================================================================
-
-import { imageMagick } from './api/ImageMagick';
-export default imageMagick;
