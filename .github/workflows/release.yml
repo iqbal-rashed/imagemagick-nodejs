@@ -621,12 +621,22 @@ jobs:
               rm -f "$BUNDLE_DIR/etc/ImageMagick-7/type"*.xml
               
               # Create type.xml with relative paths (relative to etc/ImageMagick-7/)
-              printf '%s\n' '<?xml version="1.0" encoding="UTF-8"?>' '<typemap>' \
-                '  <type name="DejaVu-Sans" fullname="DejaVu Sans" family="DejaVu Sans" style="Normal" stretch="Normal" weight="400" glyphs="../../share/fonts/DejaVuSans.ttf"/>' \
-                '  <type name="sans-serif" fullname="DejaVu Sans" family="DejaVu Sans" style="Normal" stretch="Normal" weight="400" glyphs="../../share/fonts/DejaVuSans.ttf"/>' \
-                '  <type name="Arial" fullname="DejaVu Sans" family="DejaVu Sans" style="Normal" stretch="Normal" weight="400" glyphs="../../share/fonts/DejaVuSans.ttf"/>' \
-                '  <type name="Helvetica" fullname="DejaVu Sans" family="DejaVu Sans" style="Normal" stretch="Normal" weight="400" glyphs="../../share/fonts/DejaVuSans.ttf"/>' \
-                '</typemap>' > "$BUNDLE_DIR/etc/ImageMagick-7/type.xml"
+              echo "<?xml version=\"1.0\" encoding=\"UTF-8\"?>" > "$BUNDLE_DIR/etc/ImageMagick-7/type.xml"
+              echo "<typemap>" >> "$BUNDLE_DIR/etc/ImageMagick-7/type.xml"
+              echo "  <type name=\"DejaVu-Sans\" fullname=\"DejaVu Sans\" family=\"DejaVu Sans\" style=\"Normal\" stretch=\"Normal\" weight=\"400\" glyphs=\"../../share/fonts/DejaVuSans.ttf\"/>" >> "$BUNDLE_DIR/etc/ImageMagick-7/type.xml"
+              echo "  <type name=\"sans-serif\" fullname=\"DejaVu Sans\" family=\"DejaVu Sans\" style=\"Normal\" stretch=\"Normal\" weight=\"400\" glyphs=\"../../share/fonts/DejaVuSans.ttf\"/>" >> "$BUNDLE_DIR/etc/ImageMagick-7/type.xml"
+              echo "  <type name=\"Arial\" fullname=\"DejaVu Sans\" family=\"DejaVu Sans\" style=\"Normal\" stretch=\"Normal\" weight=\"400\" glyphs=\"../../share/fonts/DejaVuSans.ttf\"/>" >> "$BUNDLE_DIR/etc/ImageMagick-7/type.xml"
+              echo "  <type name=\"Helvetica\" fullname=\"DejaVu Sans\" family=\"DejaVu Sans\" style=\"Normal\" stretch=\"Normal\" weight=\"400\" glyphs=\"../../share/fonts/DejaVuSans.ttf\"/>" >> "$BUNDLE_DIR/etc/ImageMagick-7/type.xml"
+              echo "</typemap>" >> "$BUNDLE_DIR/etc/ImageMagick-7/type.xml"
+              
+              # Also copy type.xml to fonts directory (some ImageMagick configs look there)
+              echo "<?xml version=\"1.0\" encoding=\"UTF-8\"?>" > "$BUNDLE_DIR/share/fonts/type.xml"
+              echo "<typemap>" >> "$BUNDLE_DIR/share/fonts/type.xml"
+              echo "  <type name=\"DejaVu-Sans\" fullname=\"DejaVu Sans\" family=\"DejaVu Sans\" style=\"Normal\" stretch=\"Normal\" weight=\"400\" glyphs=\"DejaVuSans.ttf\"/>" >> "$BUNDLE_DIR/share/fonts/type.xml"
+              echo "  <type name=\"sans-serif\" fullname=\"DejaVu Sans\" family=\"DejaVu Sans\" style=\"Normal\" stretch=\"Normal\" weight=\"400\" glyphs=\"DejaVuSans.ttf\"/>" >> "$BUNDLE_DIR/share/fonts/type.xml"
+              echo "  <type name=\"Arial\" fullname=\"DejaVu Sans\" family=\"DejaVu Sans\" style=\"Normal\" stretch=\"Normal\" weight=\"400\" glyphs=\"DejaVuSans.ttf\"/>" >> "$BUNDLE_DIR/share/fonts/type.xml"
+              echo "  <type name=\"Helvetica\" fullname=\"DejaVu Sans\" family=\"DejaVu Sans\" style=\"Normal\" stretch=\"Normal\" weight=\"400\" glyphs=\"DejaVuSans.ttf\"/>" >> "$BUNDLE_DIR/share/fonts/type.xml"
+              echo "</typemap>" >> "$BUNDLE_DIR/share/fonts/type.xml"
               
               echo "Font bundled:"
               ls -lh "$BUNDLE_DIR/share/fonts/"
@@ -1088,20 +1098,22 @@ jobs:
               rm -f "$BUNDLE_DIR/etc/ImageMagick-7/type"*.xml
               
               # Create type.xml with relative paths (relative to etc/ImageMagick-7/)
-              printf '%s\n' '<?xml version="1.0" encoding="UTF-8"?>' '<typemap>' \
-                '  <type name="DejaVu-Sans" fullname="DejaVu Sans" family="DejaVu Sans" style="Normal" stretch="Normal" weight="400" glyphs="../../share/fonts/DejaVuSans.ttf"/>' \
-                '  <type name="sans-serif" fullname="DejaVu Sans" family="DejaVu Sans" style="Normal" stretch="Normal" weight="400" glyphs="../../share/fonts/DejaVuSans.ttf"/>' \
-                '  <type name="Arial" fullname="DejaVu Sans" family="DejaVu Sans" style="Normal" stretch="Normal" weight="400" glyphs="../../share/fonts/DejaVuSans.ttf"/>' \
-                '  <type name="Helvetica" fullname="DejaVu Sans" family="DejaVu Sans" style="Normal" stretch="Normal" weight="400" glyphs="../../share/fonts/DejaVuSans.ttf"/>' \
-                '</typemap>' > "$BUNDLE_DIR/etc/ImageMagick-7/type.xml"
+              echo "<?xml version=\"1.0\" encoding=\"UTF-8\"?>" > "$BUNDLE_DIR/etc/ImageMagick-7/type.xml"
+              echo "<typemap>" >> "$BUNDLE_DIR/etc/ImageMagick-7/type.xml"
+              echo "  <type name=\"DejaVu-Sans\" fullname=\"DejaVu Sans\" family=\"DejaVu Sans\" style=\"Normal\" stretch=\"Normal\" weight=\"400\" glyphs=\"../../share/fonts/DejaVuSans.ttf\"/>" >> "$BUNDLE_DIR/etc/ImageMagick-7/type.xml"
+              echo "  <type name=\"sans-serif\" fullname=\"DejaVu Sans\" family=\"DejaVu Sans\" style=\"Normal\" stretch=\"Normal\" weight=\"400\" glyphs=\"../../share/fonts/DejaVuSans.ttf\"/>" >> "$BUNDLE_DIR/etc/ImageMagick-7/type.xml"
+              echo "  <type name=\"Arial\" fullname=\"DejaVu Sans\" family=\"DejaVu Sans\" style=\"Normal\" stretch=\"Normal\" weight=\"400\" glyphs=\"../../share/fonts/DejaVuSans.ttf\"/>" >> "$BUNDLE_DIR/etc/ImageMagick-7/type.xml"
+              echo "  <type name=\"Helvetica\" fullname=\"DejaVu Sans\" family=\"DejaVu Sans\" style=\"Normal\" stretch=\"Normal\" weight=\"400\" glyphs=\"../../share/fonts/DejaVuSans.ttf\"/>" >> "$BUNDLE_DIR/etc/ImageMagick-7/type.xml"
+              echo "</typemap>" >> "$BUNDLE_DIR/etc/ImageMagick-7/type.xml"
               
               # Also copy type.xml to fonts directory (some ImageMagick configs look there)
-              printf '%s\n' '<?xml version="1.0" encoding="UTF-8"?>' '<typemap>' \
-                '  <type name="DejaVu-Sans" fullname="DejaVu Sans" family="DejaVu Sans" style="Normal" stretch="Normal" weight="400" glyphs="DejaVuSans.ttf"/>' \
-                '  <type name="sans-serif" fullname="DejaVu Sans" family="DejaVu Sans" style="Normal" stretch="Normal" weight="400" glyphs="DejaVuSans.ttf"/>' \
-                '  <type name="Arial" fullname="DejaVu Sans" family="DejaVu Sans" style="Normal" stretch="Normal" weight="400" glyphs="DejaVuSans.ttf"/>' \
-                '  <type name="Helvetica" fullname="DejaVu Sans" family="DejaVu Sans" style="Normal" stretch="Normal" weight="400" glyphs="DejaVuSans.ttf"/>' \
-                '</typemap>' > "$BUNDLE_DIR/share/fonts/type.xml"
+              echo "<?xml version=\"1.0\" encoding=\"UTF-8\"?>" > "$BUNDLE_DIR/share/fonts/type.xml"
+              echo "<typemap>" >> "$BUNDLE_DIR/share/fonts/type.xml"
+              echo "  <type name=\"DejaVu-Sans\" fullname=\"DejaVu Sans\" family=\"DejaVu Sans\" style=\"Normal\" stretch=\"Normal\" weight=\"400\" glyphs=\"DejaVuSans.ttf\"/>" >> "$BUNDLE_DIR/share/fonts/type.xml"
+              echo "  <type name=\"sans-serif\" fullname=\"DejaVu Sans\" family=\"DejaVu Sans\" style=\"Normal\" stretch=\"Normal\" weight=\"400\" glyphs=\"DejaVuSans.ttf\"/>" >> "$BUNDLE_DIR/share/fonts/type.xml"
+              echo "  <type name=\"Arial\" fullname=\"DejaVu Sans\" family=\"DejaVu Sans\" style=\"Normal\" stretch=\"Normal\" weight=\"400\" glyphs=\"DejaVuSans.ttf\"/>" >> "$BUNDLE_DIR/share/fonts/type.xml"
+              echo "  <type name=\"Helvetica\" fullname=\"DejaVu Sans\" family=\"DejaVu Sans\" style=\"Normal\" stretch=\"Normal\" weight=\"400\" glyphs=\"DejaVuSans.ttf\"/>" >> "$BUNDLE_DIR/share/fonts/type.xml"
+              echo "</typemap>" >> "$BUNDLE_DIR/share/fonts/type.xml"
               
               echo "Font bundled:"
               ls -lh "$BUNDLE_DIR/share/fonts/"
@@ -1357,20 +1369,22 @@ jobs:
           rm -f "$BUNDLE_DIR/etc/ImageMagick-7/type"*.xml
 
           # Create type.xml with relative paths (relative to etc/ImageMagick-7/)
-          printf '%s\n' '<?xml version="1.0" encoding="UTF-8"?>' '<typemap>' \
-            '  <type name="DejaVu-Sans" fullname="DejaVu Sans" family="DejaVu Sans" style="Normal" stretch="Normal" weight="400" glyphs="../../share/fonts/DejaVuSans.ttf"/>' \
-            '  <type name="sans-serif" fullname="DejaVu Sans" family="DejaVu Sans" style="Normal" stretch="Normal" weight="400" glyphs="../../share/fonts/DejaVuSans.ttf"/>' \
-            '  <type name="Arial" fullname="DejaVu Sans" family="DejaVu Sans" style="Normal" stretch="Normal" weight="400" glyphs="../../share/fonts/DejaVuSans.ttf"/>' \
-            '  <type name="Helvetica" fullname="DejaVu Sans" family="DejaVu Sans" style="Normal" stretch="Normal" weight="400" glyphs="../../share/fonts/DejaVuSans.ttf"/>' \
-            '</typemap>' > "$BUNDLE_DIR/etc/ImageMagick-7/type.xml"
+          echo '<?xml version="1.0" encoding="UTF-8"?>' > "$BUNDLE_DIR/etc/ImageMagick-7/type.xml"
+          echo '<typemap>' >> "$BUNDLE_DIR/etc/ImageMagick-7/type.xml"
+          echo '  <type name="DejaVu-Sans" fullname="DejaVu Sans" family="DejaVu Sans" style="Normal" stretch="Normal" weight="400" glyphs="../../share/fonts/DejaVuSans.ttf"/>' >> "$BUNDLE_DIR/etc/ImageMagick-7/type.xml"
+          echo '  <type name="sans-serif" fullname="DejaVu Sans" family="DejaVu Sans" style="Normal" stretch="Normal" weight="400" glyphs="../../share/fonts/DejaVuSans.ttf"/>' >> "$BUNDLE_DIR/etc/ImageMagick-7/type.xml"
+          echo '  <type name="Arial" fullname="DejaVu Sans" family="DejaVu Sans" style="Normal" stretch="Normal" weight="400" glyphs="../../share/fonts/DejaVuSans.ttf"/>' >> "$BUNDLE_DIR/etc/ImageMagick-7/type.xml"
+          echo '  <type name="Helvetica" fullname="DejaVu Sans" family="DejaVu Sans" style="Normal" stretch="Normal" weight="400" glyphs="../../share/fonts/DejaVuSans.ttf"/>' >> "$BUNDLE_DIR/etc/ImageMagick-7/type.xml"
+          echo '</typemap>' >> "$BUNDLE_DIR/etc/ImageMagick-7/type.xml"
 
           # Also copy type.xml to fonts directory (some ImageMagick configs look there)
-          printf '%s\n' '<?xml version="1.0" encoding="UTF-8"?>' '<typemap>' \
-            '  <type name="DejaVu-Sans" fullname="DejaVu Sans" family="DejaVu Sans" style="Normal" stretch="Normal" weight="400" glyphs="DejaVuSans.ttf"/>' \
-            '  <type name="sans-serif" fullname="DejaVu Sans" family="DejaVu Sans" style="Normal" stretch="Normal" weight="400" glyphs="DejaVuSans.ttf"/>' \
-            '  <type name="Arial" fullname="DejaVu Sans" family="DejaVu Sans" style="Normal" stretch="Normal" weight="400" glyphs="DejaVuSans.ttf"/>' \
-            '  <type name="Helvetica" fullname="DejaVu Sans" family="DejaVu Sans" style="Normal" stretch="Normal" weight="400" glyphs="DejaVuSans.ttf"/>' \
-            '</typemap>' > "$BUNDLE_DIR/share/fonts/type.xml"
+          echo '<?xml version="1.0" encoding="UTF-8"?>' > "$BUNDLE_DIR/share/fonts/type.xml"
+          echo '<typemap>' >> "$BUNDLE_DIR/share/fonts/type.xml"
+          echo '  <type name="DejaVu-Sans" fullname="DejaVu Sans" family="DejaVu Sans" style="Normal" stretch="Normal" weight="400" glyphs="DejaVuSans.ttf"/>' >> "$BUNDLE_DIR/share/fonts/type.xml"
+          echo '  <type name="sans-serif" fullname="DejaVu Sans" family="DejaVu Sans" style="Normal" stretch="Normal" weight="400" glyphs="DejaVuSans.ttf"/>' >> "$BUNDLE_DIR/share/fonts/type.xml"
+          echo '  <type name="Arial" fullname="DejaVu Sans" family="DejaVu Sans" style="Normal" stretch="Normal" weight="400" glyphs="DejaVuSans.ttf"/>' >> "$BUNDLE_DIR/share/fonts/type.xml"
+          echo '  <type name="Helvetica" fullname="DejaVu Sans" family="DejaVu Sans" style="Normal" stretch="Normal" weight="400" glyphs="DejaVuSans.ttf"/>' >> "$BUNDLE_DIR/share/fonts/type.xml"
+          echo '</typemap>' >> "$BUNDLE_DIR/share/fonts/type.xml"
 
           echo "Font bundled:"
           ls -lh "$BUNDLE_DIR/share/fonts/"
