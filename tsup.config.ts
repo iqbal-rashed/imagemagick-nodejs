@@ -12,6 +12,7 @@ export default defineConfig([
     target: 'node18',
     shims: true,
     treeshake: true,
+    minify: true,
   },
   {
     entry: ['src/index.ts'],
@@ -24,17 +25,6 @@ export default defineConfig([
     target: 'node18',
     shims: true,
     treeshake: true,
-  },
-  {
-    entry: ['src/scripts/install.ts'],
-    format: ['cjs'],
-    dts: false,
-    splitting: false,
-    sourcemap: false,
-    clean: true,
-    outDir: 'dist',
-    target: 'node18',
-    shims: true,
-    treeshake: true,
+    minify: true,
   },
 ]);

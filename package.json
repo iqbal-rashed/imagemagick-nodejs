@@ -15,7 +15,7 @@
   "exports": {
     ".": {
       "import": {
-        "types": "./dist/index.d.mts",
+        "types": "./dist/index.d.ts",
         "default": "./dist/index.mjs"
       },
       "require": {
@@ -25,7 +25,8 @@
     }
   },
   "files": [
-    "dist"
+    "dist",
+    "scripts"
   ],
   "engines": {
     "node": ">=18.0.0"
@@ -40,9 +41,7 @@
     "typecheck": "tsc --noEmit",
     "test": "vitest",
     "test:run": "vitest run",
-    "download": "tsx ./src/scripts/install.ts",
-    "download:prod": "node ./dist/install.js",
-    "postinstall": "node -e \"process.env.INIT_CWD !== process.cwd() && require('child_process').execSync('npm run download:prod', { stdio: 'inherit' });\"",
+    "postinstall": "node ./scripts/install.js",
     "prepublishOnly": "npm run build"
   },
   "repository": {
